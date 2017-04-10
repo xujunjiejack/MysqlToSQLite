@@ -1,0 +1,166 @@
+{
+    "diagnostic_logfile": "logs/diag_`now`.md",
+    "tables_logfile":"logs/tables_`now`.md",
+    "errors_logfile":"logs/error_`now`.md",
+    "collab_db_conn":"wtp_collab",
+    "wtp_data_conn": "wtp_data",
+    "known_phases": {
+        "1": {
+            "table": "data_1_tr",
+            "column": "intdate"
+        },
+        "3": {
+            "table": "data_3_tr",
+            "column": "packsent"
+        },
+        "4": {
+            "table": "data_4_tr",
+            "column": "packsent"
+        },
+        "5": {
+            "table": "data_5_tr",
+            "column": "p5packetsent"
+        },
+        "6": {
+            "table": "data_6_tr",
+            "column": "p6ltr1"
+        },
+        "r1": {
+            "table": "data_r1_tr",
+            "column": "twadps"
+        },
+        "rd": {
+            "table": "data_r1_tr",
+            "column": "twadps"
+        },
+        "c3": {
+            "table": "data_c3_tr",
+            "column": "c3cf1"
+        },
+        "mr": {
+            "table": "data_mr_tr",
+            "column": "twamrquest"
+        },
+        "rdmr": {
+            "table": "data_r1_tr",
+            "column": "twadps"
+        },
+        "s": {
+            "table": "data_s_tr",
+            "column": "date complete"
+        },
+        "at": {
+            "table": "data_at_dates",
+            "column": "atdate"
+        },
+        "sd": {
+            "table": "data_sd_tr",
+            "column": "scrreid"
+        },
+        "w14": {
+            "table": "data_w14_tr",
+            "column": "cg1intdate"
+        }
+    },
+    "empty_equivs": [
+        null,
+        9999,
+        9998,
+        ""
+    ],
+    "tables_we_dont_want_anything_to_do_with": [
+        "aaatable*",
+        "trash*",
+        "gen_staff",
+        "gen_social_security",
+        "gen_secondary_contact",
+        "gen_family_alt"
+    ],
+    "tables_to_sanitize": {
+        "gen_family": [
+            "familylabel",
+            "motherfirstname",
+            "motherlastname",
+            "mothermadienname",
+            "fatherfirstname",
+            "fatherlastname",
+            "address",
+            "city",
+            "state",
+            "zip",
+            "phonenumber",
+            "email",
+            "oldaddress",
+            "comment",
+            "initletter",
+            "initresponse",
+            "otherproject"
+        ],
+        "gen_parentdates": [
+            "motherdob",
+            "fatherdob",
+            "dateofbirth"
+        ],
+        "gen_siblings": [
+            "dateofbirth",
+            "firstname",
+            "dateofdeath",
+            "lastname",
+            "comments"
+        ],
+        "gen_twins": [
+            "firstname",
+            "lastname",
+            "dateofbirth"
+        ],
+        "gen_de_state":[
+            "dob_m",
+            "dob_f"
+        ],
+        "data_oc_m": [],
+        "data_oc_m_tap": [],
+        "gen_family_not_wtp": "drop",
+        "gen_geo_zips": "drop",
+        "gen_family_alt":"drop",
+        "gen_no_recruit": "drop",
+        "gen_no_sort": "drop",
+        "gen_staff": "drop",
+        "gen_jforms_users":"drop",
+        "gen_no_recruit_sort":"drop",
+        "gen_social_security":"drop"
+    },
+    "dob_keys":{
+        "twin":{
+            "twin":{
+                "table": "gen_twins",
+                "column":"dateofbirth",
+                "equalities": [
+                    ["familyid","familyid"],
+                    ["twin","twin"]
+                ],
+                "new_col":"twinage",
+                "primary_keys":[ "familyid","twin"]
+            }
+        },
+        "familyid": {
+            "father":{
+                "table": "gen_parentdates",
+                "new_col":"fatherage",
+                "primary_keys":["familyid"],
+                "column":"fatherdob",
+                "equalities": [
+                    ["familyid","familyid"]
+                ]
+            },
+            "mother":{
+                "table":"gen_parentdates",
+                "column":"motherdob",
+                "new_col":"motherage",
+                "primary_keys":["familyid"],
+                 "equalities": [
+                    ["familyid","familyid"]
+                ]
+            }
+        }
+    }
+}
