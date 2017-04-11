@@ -21,6 +21,10 @@
             "table": "data_5_tr",
             "column": "p5packetsent"
         },
+        "5r":{
+            "table": "data_5_tr",
+            "column": "p5packetsent"
+        },
         "6": {
             "table": "data_6_tr",
             "column": "p6ltr1"

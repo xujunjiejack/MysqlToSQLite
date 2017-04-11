@@ -14,7 +14,7 @@ exporter = None
 
 class db_exporter():
     
-    def __init__(self, path_to_settings = 'settings.json'):
+    def __init__(self, path_to_settings = 'db_exporter_settings.json'):
         self.wtp_collab = db.db_connect(DSN='wtp_collab')
         self.wtp_data =  db.db_connect(DSN='wtp_data')
         self.sqlite = get_coordinator().sqlite_conn
@@ -38,7 +38,7 @@ class db_exporter():
     #####################
 
     # sets self.settings and checks for validity.
-    def load_settings(self, path_to_settings = 'settings.json',logger=logging):
+    def load_settings(self, path_to_settings = 'db_exporter_settings.json',logger=logging):
         ''' This grabs the json settings file located in this package.
             it also checks that it has all the fields required for the export_db package
             
