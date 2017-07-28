@@ -131,7 +131,9 @@
         "gen_staff": "drop",
         "gen_jforms_users":"drop",
         "gen_no_recruit_sort":"drop",
-        "gen_social_security":"drop"
+        "gen_social_security":"drop",
+        "user_jj_rdoc_ppt_info":"drop",
+        "gen_rdmr_guid":"drop"
     },
     "dob_keys":{
         "twin":{

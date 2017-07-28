@@ -33,7 +33,7 @@ class DataSanitizer:
     # API function
     def sanitizer_collab(self):
         self.cc.connect()
-
+        self.con = self.cc.sqlite_conn
         for table in get_all_tablenames(self.con):
             # sanitize it
             failed_columns = []  # sanitize returns a list of failed columns or throws an exception

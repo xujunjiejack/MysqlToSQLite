@@ -258,6 +258,11 @@ def get_primary_keys(con, tablename, logger = logging):
     cursor.close()
     return keys
 
+
+def is_col_in_fields(con, tablename, col):
+    return col in get_columns(con, tablename)
+
+
 # add a column of a certain type to a table
 def add_column(con, tablename, col_name, type, primary_key=False, *args, logger = logging):
     '''
@@ -272,14 +277,11 @@ def add_column(con, tablename, col_name, type, primary_key=False, *args, logger 
         raise NotImplementedError('adding a primary column has not been implemented yet')
     else:
 
-        if not is_col_in_keys(con, tablename, col_name):
+        if not is_col_in_fields(con, tablename, col_name):
             sql = 'ALTER TABLE "%s" ADD COLUMN %s %s'%(tablename, col_name.lower(), type)
             logger.info(sql)
             return dosql(con,sql)
         logger.info("column already exists")
-
-def is_col_in_fields(con, tablename, col):
-    return col in get_columns(con, tablename)
 
 
 # copies a table into another database
@@ -482,7 +484,7 @@ def get_rows(con,tablename, logger = logging):
     '''
         Returns the rows as lists
     '''
-    sql = 'SELECT * from %s;' %tablename
+    sql = "SELECT * from '%s';" %tablename
     desc,rows = dosql(con,sql, logger=logger)
 
     return rows
@@ -614,7 +616,7 @@ def duplicate_table_with_primary_key(con, source_dt, dest_dt, primary_keys):
     if len(list(keys)) == 0:
         raise fail_to_duplicate_table_err()
 
-    sql = "CREATE TABLE {des_table} AS SELECT {key} FROM {sou_table};".format(des_table=dest_dt,
+    sql = "CREATE TABLE '{des_table}' AS SELECT {key} FROM '{sou_table}';".format(des_table=dest_dt,
                                                                              key=",".join(keys), sou_table = source_dt)
 
     dosql(con, sql)
@@ -624,6 +626,8 @@ def test():
     from connection_coordinator import get_coordinator
     cc = get_coordinator()
     cc.connect()
-    duplicate_table_with_primary_key(cc.sqlite_conn, "calc_4_au_f", "calc_4_au_f_temp", ["twin", "familyid"])
+    #duplicate_table_with_primary_key(cc.sqlite_conn, "calc_4_au_f", "calc_4_au_f_temp", ["twin", "familyid"])
+    duplicate_table_with_primary_key(cc.sqlite_conn, "user_sd_auditory original lists", "user_sd_auditory original lists_temp", ["twin", "familyid"])
+
     # I can write a test for sql
 ### EOF

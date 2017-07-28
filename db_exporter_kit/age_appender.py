@@ -33,9 +33,10 @@ class AgeAppender:
 
     def append_age(self, tables=None):
         self.cc.connect()
+        self.dest_db_con = self.cc.sqlite_conn
         table_names = None
 
-        if tables is None:
+        if tables is None and self.dest_db_con is not None:
             table_names = read_sqlite_tables_from_sqlite_cursor(self.dest_db_con.cursor())
 
         elif type(tables) is str:
@@ -47,7 +48,7 @@ class AgeAppender:
         # filter out the table that is created by collaborator. We don't need them. Still testing
         # table_names = filter(lambda table_name: not self.is_collab_table(table_name), table_names)
         self.append_ages_to_tables(table_names)
-        self.dest_db_con.close_all_connection()
+        self.cc.close_all_connection()
 
     def append_ages_to_tables(self, table_names):
         for table_name in table_names:

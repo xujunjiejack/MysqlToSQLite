@@ -298,7 +298,7 @@ class db_exporter():
         # Also I think I need to check the table key to decide whether it's valid. If there is no
         # allowed key like "familyid", I should jump
         if not db.is_col_in_fields(con, origin_table, "familyid"):
-            raise we.erroneous_col_err("familyid not in the field")
+            raise we.AgeAppendingError("familyid not in the field")
 
         # Step 0: copy a table with primary key
         # table name will be called temp1
@@ -707,9 +707,10 @@ class db_exporter():
             # table definately has column
 
             try:
-                join_sql = 'UPDATE %s SET %s = ( SELECT "%s" FROM %s WHERE '%(basetable, new_col, date_col, from_table)
+                join_sql = "UPDATE '%s' " %basetable + 'SET %s = ( SELECT "%s" FROM '%(new_col, date_col) +"'%s'"%from_table \
+                           + ' WHERE '
                 for e in equalities:
-                    join_sql  += ' %s.%s = %s.%s '%(basetable,e[0],from_table,e[1])
+                    join_sql  += " '%s'.%s = '%s'.%s "%(basetable,e[0],from_table,e[1])
                     join_sql += 'AND'
                 join_sql =join_sql[:-3] # remove the last AND i.e. last 3 chars.
                 join_sql += ')' 

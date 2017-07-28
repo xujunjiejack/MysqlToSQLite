@@ -46,6 +46,15 @@ def change_decimal_to_4(creating_stmt_lines):
 
     return creating_stmt_lines
 
+def change_type_of_twin(creating_stmt_lines):
+    # rewrite the line
+    for index, line in enumerate(creating_stmt_lines):
+        if " \"twin\" " in line.lower():
+           # print(line)
+            creating_stmt_lines[index] = '  "twin" int(10) NOT NULL DEFAULT \'0\', '
+    return creating_stmt_lines
+
+
 def clean_statment(statement):
     """
         sqlite has a little different statement grammer compared with mysql. Thus, it needs to get cleaned
@@ -57,7 +66,8 @@ def clean_statment(statement):
     :return:
     """
     clean_action = [clean_statements_containing_KEY, clean_unsupported_keyword,
-                    clean_comma_before_end_parenthesis, change_decimal_to_4]
+                    clean_comma_before_end_parenthesis, change_decimal_to_4,
+                    change_type_of_twin]
 
     # get rid of the statment that contains key:
     # e.g KEY "staffid" ("staffid")

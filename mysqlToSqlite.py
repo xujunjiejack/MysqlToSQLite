@@ -6,9 +6,8 @@ from db_exporter_kit.data_sanitizor import DataSanitizer
 import migrator_kit.table_creator as table_creator
 from os.path import join, splitext
 from os import rename
+import sys
 import json
-import sqlite3
-import argparse
 import datetime
 
 # Then I can test everything, and move on to implementation of the back arrow.
@@ -20,14 +19,17 @@ db_archive = ""
 
 def run_whole_process(cc):
     table_creator.create_new_table(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
-    # m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
-    # m.migrate_all_tables()
 
-    # ageAppender = AgeAppender(cc, get_db_exporter())
-    # ageAppender.append_age()
+    m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
+    # For test purpose
+    # m.migrate_some_tables(["`calc_mr_pb_t`","`data_4_zy_e2`","`data_3_le_m`","`user_5_dps_p_2010_0210`","`data_4_cortid`","`data_4_au_m`"])
+    m.migrate_all_tables()
 
-    # sanitzer = DataSanitizer(cc, get_db_exporter())
-    # sanitzer.sanitizer_collab()
+    ageAppender = AgeAppender(cc, get_db_exporter())
+    ageAppender.append_age()
+
+    sanitzer = DataSanitizer(cc, get_db_exporter())
+    sanitzer.sanitizer_collab()
     return
 
 

@@ -97,11 +97,12 @@ class Migrater:
         # prepare logger
         self.logger = logging.getLogger("sql2sqlite.migration")
         self.logger.setLevel(logging.INFO)
-        fileHandler = logging.FileHandler("migration.logs")
+        fileHandler = logging.FileHandler("logs/migration.logs")
         fileHandler.setLevel(logging.CRITICAL)
         fileHandler.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
         self.logger.addHandler(fileHandler)
         self.logger.critical("------ Start migrating ------")
+        #import ipdb; ipdb.set_trace()
 
         self.coordinator = get_coordinator(data_source)
         self.coordinator.connect()
@@ -143,7 +144,7 @@ class Migrater:
                                         , table_names)
         self.migrate_with_one_record_a_time(table_needed_exported)
         self.dump_error_tables()
-#        self.coordinator.close_all_connection()
+        self.coordinator.close_all_connection()
 
     def migrate_with_one_record_a_time(self, table_names):
 
@@ -216,22 +217,6 @@ class Migrater:
     def dump_error_tables(self):
         self.logger.critical("Critial failed table: {tables}".format(tables=self.critical_failed_table))
 
-
-    def migrate(self, table_names):
-        # Outdated function
-        for table_name in table_names:
-
-            self.logger.info("Migrating table: {0}".format(table_name))
-
-            insert_sql = get_insert_sql_from_sql_table(self.sql_cur, table_name)
-
-            self.logger.debug("The insert statement is {0}".format(insert_sql))
-
-            self.execute_insert_sql(insert_sql, table_name)
-
-        self.coordinator.close_all_connection()
-
-        self.dump_tracker()
 # and then create insert sql statement with multiple input value
     # assume this format of insert sql query can work
     # "INSERT INTO calc_1_bi_f () VALUES (), (), ();"
