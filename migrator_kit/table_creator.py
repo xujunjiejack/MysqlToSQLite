@@ -23,7 +23,7 @@ def create_new_table(table_names = None, data_source = DataSource.WTP_COLLAB, ex
 
     coordinator = get_coordinator(data_souce=DataSource.WTP_DATA)
     coordinator.connect()
-
+    f = open("create_st.txt", "w")
     # get conn and cur for both sqlite and sql
     sqlite_cur = coordinator.sqlite_cur
     sql_cur = coordinator.sql_cur
@@ -57,7 +57,7 @@ def create_new_table(table_names = None, data_source = DataSource.WTP_COLLAB, ex
         # after get the statement,clean the create statement
         result = sql_cur.fetchone()
         use_create_table_sql = clean_statment(result[1])
-
+        f.write(use_create_table_sql)
         print("Creating table for table: %s" % table_name)
 
         # Execute the create statement

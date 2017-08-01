@@ -65,9 +65,11 @@ def clean_statment(statement):
     :param statement:
     :return:
     """
+    # The order matter for change_type_of_twin and clean_comma_before_end_parenthesis. This order can ensure that
+    # no new possible "comma" will be entered after the last comma gets cleaned up.
     clean_action = [clean_statements_containing_KEY, clean_unsupported_keyword,
-                    clean_comma_before_end_parenthesis, change_decimal_to_4,
-                    change_type_of_twin]
+                    change_type_of_twin, clean_comma_before_end_parenthesis, change_decimal_to_4,
+                    ]
 
     # get rid of the statment that contains key:
     # e.g KEY "staffid" ("staffid")

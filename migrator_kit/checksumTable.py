@@ -18,9 +18,11 @@ class ChecksumTable:
     def __init__(self):
         # This file will be a json file
         self.file_name = "checksum_table.json"
+        self.cur_checksum = None
+        self.old_checksum = None
 
     def checksum_file_exists(self):
-        return os.path.exists(self.file_name) or os.stat(self.file_name).st_size > 10
+        return os.path.exists(self.file_name) and os.stat(self.file_name).st_size > 10
 
     def get_all_checksum(self, con):
         cur = con.cursor()
@@ -44,13 +46,35 @@ class ChecksumTable:
             checksum_dict[table_name[9:]] = checksum
         return checksum_dict
 
-    def _create_new_file_with_checksum_(self,con):
+    def _create_new_file_with_checksum_(self,con, checksum_dict = None):
         f = open(self.file_name, "w")
-        checksum_dict = self.get_all_checksum(con)
+        if checksum_dict is None:
+            checksum_dict = self.get_all_checksum(con)
         json.dump(checksum_dict, f)
         f.close()
 
     def tables_for_migration(self, con):
+        # Save the current checksum, for later update use.
+        tables, self.cur_checksum, self.old_checksum = self._get_tables_for_migration_(con)
+        return tables
+
+    def update_the_checksum_of_successful_tables(self, successful_tables):
+        # This should be called at the end of the program to make sure the tables that have been updated
+        # in the collab will have the new checksum stored. For those tables that failed to be updated during
+        # any of the process (migrator, age appender, and sanitizor), their checksum should be preserved for next try.
+
+        # only the successful table will get assigned as the current checksum. Other table should preserve the old checksum
+        final_checksum = {}
+        for table in self.old_checksum:
+            if table in successful_tables:
+                final_checksum[table] = self.cur_checksum[table]
+            else:
+                final_checksum[table] = self.old_checksum[table]
+
+        self._create_new_file_with_checksum_(final_checksum)
+        return
+
+    def _get_tables_for_migration_(self, con):
         # If the json file doesn't exist, it will directly produce one. Then all of the tables will be
         # returned for migration
         if not self.checksum_file_exists():
@@ -64,11 +88,25 @@ class ChecksumTable:
         #       The class will then read the file into the memory.
         f = open(self.file_name, "r")
         old_checksum_dict = json.load(f)
-        #       Compare these two
+        f.close()
 
+        tables = []
+        #       Compare these two
+        for table in cur_checksum_dict:
+            cur_checksum = cur_checksum_dict[table]
+            try:
+                old_checksum = old_checksum_dict[table]
+                if not old_checksum == cur_checksum:
+                    tables.append(table)
+
+            except KeyError as e:
+                tables.append(table)
         #       and return the table that fits the criteria for migration
 
-        pass
+        return tables, cur_checksum_dict, old_checksum_dict
+
+
+
 
 def test():
     checksumTable = ChecksumTable()

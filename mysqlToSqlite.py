@@ -18,6 +18,7 @@ db_name = ""
 db_archive = ""
 
 def run_whole_process(cc):
+    # Now we need to truncate
     table_creator.create_new_table(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
 
     m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
@@ -63,11 +64,11 @@ def main():
 
     cc.logger.info("backing up the origin db")
     # Rename the origin db file, put it into an archive folder, and then rename the temporary db to the db.
-    origin_file_path = join(db_directory, db_name)
-    archive_file_name = generate_archive_file_name(db_name)
-    archive_file_path = join(db_archive, archive_file_name)
-    rename(origin_file_path, archive_file_path)
-    rename(temp_db_path, origin_file_path)
+ #   origin_file_path = join(db_directory, db_name)
+  #  archive_file_name = generate_archive_file_name(db_name)
+  #  archive_file_path = join(db_archive, archive_file_name)
+  #  rename(origin_file_path, archive_file_path)
+  #  rename(temp_db_path, origin_file_path)
 
     # assume that the cc.sqlite_conn here has closed
     cc.logger.info("Program ends")
