@@ -31,9 +31,18 @@ class DataSanitizer:
         self.logger.addHandler(fileHandler)
 
     # API function
-    def sanitizer_collab(self):
+    def sanitizer_collab(self, tables = None):
         self.cc.connect()
         self.con = self.cc.sqlite_conn
+        successful_tables = []
+
+        if tables is None:
+            tables = get_all_tablenames(self.con)
+        elif isinstance(tables, str):
+            tables = [tables]
+        elif not isinstance(tables, list):
+            raise ValueError("tables should only be a string or list")
+
         for table in get_all_tablenames(self.con):
             # sanitize it
             failed_columns = []  # sanitize returns a list of failed columns or throws an exception

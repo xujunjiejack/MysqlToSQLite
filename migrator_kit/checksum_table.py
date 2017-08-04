@@ -46,19 +46,27 @@ class ChecksumTable:
             checksum_dict[table_name[9:]] = checksum
         return checksum_dict
 
-    def _create_new_file_with_checksum_(self,con, checksum_dict = None):
+    def _create_new_file_with_checksum_(self,con = None, checksum_dict = None):
         f = open(self.file_name, "w")
+
+        if con is None and checksum_dict is None:
+            raise ValueError("con and checksum_dict can't both be None")
+
         if checksum_dict is None:
             checksum_dict = self.get_all_checksum(con)
         json.dump(checksum_dict, f)
         f.close()
 
-    def tables_for_migration(self, con):
+    def tables_for_migration(self, cc):
+        cc.connect()
+
         # Save the current checksum, for later update use.
-        tables, self.cur_checksum, self.old_checksum = self._get_tables_for_migration_(con)
+        tables, self.cur_checksum, self.old_checksum = self._get_tables_for_migration_(cc.sql_conn)
+
+        cc.close_all_connection()
         return tables
 
-    def update_the_checksum_of_successful_tables(self, successful_tables):
+    def update_the_checksum_of_successful_tables(self,successful_tables):
         # This should be called at the end of the program to make sure the tables that have been updated
         # in the collab will have the new checksum stored. For those tables that failed to be updated during
         # any of the process (migrator, age appender, and sanitizor), their checksum should be preserved for next try.
@@ -71,7 +79,7 @@ class ChecksumTable:
             else:
                 final_checksum[table] = self.old_checksum[table]
 
-        self._create_new_file_with_checksum_(final_checksum)
+        self._create_new_file_with_checksum_(checksum_dict=final_checksum)
         return
 
     def _get_tables_for_migration_(self, con):
@@ -104,7 +112,6 @@ class ChecksumTable:
         #       and return the table that fits the criteria for migration
 
         return tables, cur_checksum_dict, old_checksum_dict
-
 
 
 

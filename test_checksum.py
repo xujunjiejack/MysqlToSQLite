@@ -1,5 +1,5 @@
 import unittest
-from migrator_kit.checksumTable import ChecksumTable
+from migrator_kit.checksum_table import ChecksumTable
 import pyodbc
 
 

@@ -48,17 +48,24 @@ class AgeAppender:
         # filter out the table that is created by collaborator. We don't need them. Still testing
         # table_names = filter(lambda table_name: not self.is_collab_table(table_name), table_names)
         self.append_ages_to_tables(table_names)
+        self.dest_db_con.commit()
         self.cc.close_all_connection()
 
     def append_ages_to_tables(self, table_names):
+
+        successful_tables = []
         for table_name in table_names:
             self.logger.info("------ Appending age for {0}------".format(table_name))
             try:
                 self.exporter.add_ages_to_table(self.dest_db_con, table_name, verb=False)
+                successful_tables.append(table_name)
             except AgeAppendingError as e:
                 self.logger.critical("Appending age fail: table {table_name} ,msg: {msg}".format(table_name=table_name,
                                                                                               msg=e))
                 continue
+
+        if len(successful_tables) == 0:
+            raise ValueError("No Table gets appended")
 
     def is_collab_table(self, tablename):
         if self.collab_tables is None:

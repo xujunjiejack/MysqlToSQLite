@@ -395,7 +395,7 @@ class db_exporter():
 
         # 5. __ DROP TEMPARORY TABLE __ i.e. cleanup the table
         logger.info('dropping these columns to cleanup the table %s'%str(cols_to_clean))
-        con.commit()
+
         db.drop_table(con, temp_table_name)
 
         return new_cols, failed_people
