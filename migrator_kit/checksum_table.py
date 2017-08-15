@@ -15,17 +15,22 @@ import json
 
 class ChecksumTable:
 
-    def __init__(self):
+    def __init__(self, ignore_tables = [], checksum_file_name = ""):
         # This file will be a json file
-        self.file_name = "checksum_table.json"
+
+        if checksum_file_name == "":
+            self.file_name = "checksum_table.json"
+        else:
+            self.file_name = checksum_file_name
         self.cur_checksum = None
         self.old_checksum = None
+        self.ignore_tables = ignore_tables
 
     def checksum_file_exists(self):
         return os.path.exists(self.file_name) and os.stat(self.file_name).st_size > 10
 
-    def get_all_checksum(self, con):
-        cur = con.cursor()
+    def get_all_checksum(self, sql_con):
+        cur = sql_con.cursor()
         cur.execute("SELECT table_name FROM information_schema.tables;")
         rows = cur.fetchall()
         # Dictionary
@@ -37,7 +42,10 @@ class ChecksumTable:
             checksum_row = cur.fetchone()
             table_name = checksum_row[0]
             checksum = checksum_row[1]
+
             if checksum is None:
+                continue
+            if table_name in self.ignore_tables:
                 continue
             if table_name == "wtp_data.tables":
                 continue
@@ -61,10 +69,23 @@ class ChecksumTable:
         cc.connect()
 
         # Save the current checksum, for later update use.
-        tables, self.cur_checksum, self.old_checksum = self._get_tables_for_migration_(cc.sql_conn)
+        new_table, updated_table, self.cur_checksum, self.old_checksum = self._get_tables_for_migration_(cc.sql_conn)
 
         cc.close_all_connection()
-        return tables
+        return new_table, updated_table
+
+    def create_new_checksum_for_tables(self, tables, cc):
+
+        cc.connect()
+        cur_checksum = self.get_all_checksum(sql_con=cc.sql_conn)
+        final_checksum = {}
+        for table in cur_checksum:
+            if table in tables:
+                final_checksum[table] = cur_checksum[table]
+
+        self._create_new_file_with_checksum_(checksum_dict=final_checksum)
+        cc.close_all_connection()
+        return
 
     def update_the_checksum_of_successful_tables(self,successful_tables):
         # This should be called at the end of the program to make sure the tables that have been updated
@@ -73,11 +94,14 @@ class ChecksumTable:
 
         # only the successful table will get assigned as the current checksum. Other table should preserve the old checksum
         final_checksum = {}
-        for table in self.old_checksum:
+        for table in self.cur_checksum:
             if table in successful_tables:
                 final_checksum[table] = self.cur_checksum[table]
             else:
-                final_checksum[table] = self.old_checksum[table]
+                try:
+                    final_checksum[table] = self.old_checksum[table]
+                except KeyError as e:
+                    print(e)
 
         self._create_new_file_with_checksum_(checksum_dict=final_checksum)
         return
@@ -98,20 +122,26 @@ class ChecksumTable:
         old_checksum_dict = json.load(f)
         f.close()
 
-        tables = []
+        updated_tables = []
+        new_tables = []
         #       Compare these two
         for table in cur_checksum_dict:
             cur_checksum = cur_checksum_dict[table]
             try:
                 old_checksum = old_checksum_dict[table]
+                if table in self.ignore_tables:
+                    continue
+
                 if not old_checksum == cur_checksum:
-                    tables.append(table)
+                    updated_tables.append(table)
 
             except KeyError as e:
-                tables.append(table)
+                if table in self.ignore_tables:
+                    continue
+                new_tables.append(table)
         #       and return the table that fits the criteria for migration
 
-        return tables, cur_checksum_dict, old_checksum_dict
+        return new_tables, updated_tables, cur_checksum_dict, old_checksum_dict
 
 
 

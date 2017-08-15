@@ -78,7 +78,16 @@
         "gen_staff",
         "gen_social_security",
         "gen_secondary_contact",
-        "gen_family_alt"
+        "gen_family_alt",
+        "user_jj_rdoc_ppt_info",
+        "gen_family_not_wtp",
+        "gen_geo_zips",
+        "gen_no_recruit",
+        "gen_no_sort",
+        "gen_staff",
+        "gen_jforms_users",
+        "gen_no_recruit_sort",
+        "gen_social_security"
     ],
     "tables_to_sanitize": {
         "gen_family": [
@@ -122,18 +131,7 @@
             "dob_f"
         ],
         "data_oc_m": [],
-        "data_oc_m_tap": [],
-        "gen_family_not_wtp": "drop",
-        "gen_geo_zips": "drop",
-        "gen_family_alt":"drop",
-        "gen_no_recruit": "drop",
-        "gen_no_sort": "drop",
-        "gen_staff": "drop",
-        "gen_jforms_users":"drop",
-        "gen_no_recruit_sort":"drop",
-        "gen_social_security":"drop",
-        "user_jj_rdoc_ppt_info":"drop",
-        "gen_rdmr_guid":"drop"
+        "data_oc_m_tap": []
     },
     "dob_keys":{
         "twin":{

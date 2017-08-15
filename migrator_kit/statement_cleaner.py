@@ -6,7 +6,9 @@ def clean_comma_before_end_parenthesis(creating_stmt_lines):
     for index, line in enumerate(creating_stmt_lines):
         if "(" not in line and ")" in line:
             # try to make sure there is no , at the end of the statement
-            creating_stmt_lines[index - 1] = creating_stmt_lines[index - 1].strip(',')
+
+            creating_stmt_lines[index - 1] = creating_stmt_lines[index - 1].strip(",")
+            print(creating_stmt_lines[index-1])
     return creating_stmt_lines
 
 
@@ -65,6 +67,8 @@ def clean_statment(statement):
     :param statement:
     :return:
     """
+    # import ipdb;
+    # ipdb.set_trace()
     # The order matter for change_type_of_twin and clean_comma_before_end_parenthesis. This order can ensure that
     # no new possible "comma" will be entered after the last comma gets cleaned up.
     clean_action = [clean_statements_containing_KEY, clean_unsupported_keyword,
@@ -74,6 +78,7 @@ def clean_statment(statement):
     # get rid of the statment that contains key:
     # e.g KEY "staffid" ("staffid")
     lines = statement.split("\n")
+    lines = [line.strip() for line in lines]
 
     # Can I make it something like sum?
     for clean in clean_action:
@@ -83,18 +88,19 @@ def clean_statment(statement):
     return new_stmt
 
 def test():
-    stmt = 'CREATE TABLE "calc_4_pi_m" (\
-        "familyid" varchar(45) NOT NULL DEFAULT \'\', \
-        "twin" int(10) unsigned NOT NULL DEFAULT \'0\', \
-        "age" int(10) unsigned NOT NULL DEFAULT \'0\', \
-        "gender" int(10) unsigned NOT NULL DEFAULT \'0\', \
-        "pdssm" double NOT NULL DEFAULT \'0\',\
-        "pdsam" double NOT NULL DEFAULT \'0\',\
-        "pdsgm" double NOT NULL DEFAULT \'0\',\
-        "apubbm" double NOT NULL DEFAULT \'0\',\
-        "apubpm" double NOT NULL DEFAULT \'0\',\
-        "apubm" double NOT NULL DEFAULT \'0\',\
-        PRIMARY KEY ("familyid","twin")\
-    )'
+    stmt = 'CREATE TABLE "calc_4_pi_m" (  \n \
+          "familyid" varchar(45) NOT NULL DEFAULT \'\', \n \
+          "twin" int(10) unsigned NOT NULL DEFAULT \'0\', \n \
+          "age" int(10) unsigned NOT NULL DEFAULT \'0\', \n \
+          "gender" int(10) unsigned NOT NULL DEFAULT \'0\', \n \
+          "pdssm" double NOT NULL DEFAULT \'0\',\n \
+          "pdsam" double NOT NULL DEFAULT \'0\',\n \
+          "pdsgm" double NOT NULL DEFAULT \'0\',\n \
+          "apubbm" double NOT NULL DEFAULT \'0\',\n \
+          "apubpm" double NOT NULL DEFAULT \'0\',\n \
+          "apubm" double NOT NULL DEFAULT \'0\',\n \
+           )'
 
-    clean_statment(stmt)
+    '''PRIMARY KEY ("familyid","twin"),\n \''''
+
+    print (clean_statment(stmt))

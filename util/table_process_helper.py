@@ -1,5 +1,6 @@
 from collections import namedtuple, UserList
 from enum import Enum
+import copy
 
 class ResultState(Enum):
     SUCCESS = 1
@@ -22,10 +23,10 @@ class TableProcessQueue:
         self.table_names = table_name_lists
 
     def success_tables(self):
-        return self._list_of_tables_with_result_state_(ResultState.SUCCESS)
+        return copy.deepcopy(self._list_of_tables_with_result_state_(ResultState.SUCCESS))
 
     def failure_tables(self):
-        return self._list_of_tables_with_result_state_(ResultState.FAILURE)
+        return copy.deepcopy(self._list_of_tables_with_result_state_(ResultState.FAILURE))
 
     def _list_of_tables_with_result_state_(self, result_state):
         return [process_result.table_name for process_result in self.process_list
@@ -40,6 +41,19 @@ class TableProcessQueue:
 
     def process_all_tables_by(self, f):
         self._process_by_for_tables_with_filter_(f, lambda state: True)
+        return self
+
+    def treat_fail_tables_as_error(self, f):
+        return self.process_all_fail_tables_by(f, remove_failure_table=True)
+
+    def process_all_fail_tables_by(self, f, remove_failure_table=False):
+
+        for table_result in self.process_list:
+            if table_result.result == ResultState.FAILURE:
+                table_result.result = self._apply_function_to_table_(f, table_result.table_name)
+                if remove_failure_table:
+                    self.process_list.remove(table_result)
+
         return self
 
     def process_by_functions_chain_(self, f_list):

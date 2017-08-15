@@ -51,6 +51,27 @@ class AgeAppender:
         self.dest_db_con.commit()
         self.cc.close_all_connection()
 
+    def append_age_to_one_table(self, table_name):
+        """
+            This method appends the age to the specific data table
+            And it will always returns True. It's acceptable for a table to
+            not have accurate age data.
+        :param table_name:
+        :return:
+        """
+        self.cc.connect()
+        self.dest_db_con=self.cc.sqlite_conn
+        self.logger.info("------ Appending age for {0}------".format(table_name))
+        try:
+            self.exporter.add_ages_to_table(self.dest_db_con, table_name, verb=False)
+        except AgeAppendingError as e:
+            self.logger.critical("Appending age fail: table {table_name} ,msg: {msg}".format(table_name=table_name,
+                                                                                             msg=e))
+        except Exception as e:
+            self.logger.critical("Weird Error ****: {0}".format(e))
+        self.cc.close_all_connection()
+        return True
+
     def append_ages_to_tables(self, table_names):
 
         successful_tables = []

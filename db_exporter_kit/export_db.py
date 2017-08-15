@@ -198,6 +198,9 @@ class db_exporter():
         return True
         ## END want_to_export
 
+    def unwanted_tables(self):
+        return self.settings['tables_we_dont_want_anything_to_do_with']
+
     # computes which ages to add to a table. then computes them and adds them
     def add_ages_to_table(self, con, origin_table,
                           recentdate_dict=None,
@@ -288,7 +291,7 @@ class db_exporter():
                 for some reason.
             
             '''
-
+        # import ipdb; ipdb.set_trace()
         # Can I just filter the table that can calculate the age here? If you have familyid
 
         # decide whether the table should be added with the age

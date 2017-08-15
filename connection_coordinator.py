@@ -38,11 +38,11 @@ class ConnectionCoordinator:
             #self.sqlite_conn = sqlite3.connect('O:/wtp_collab.db')
             self.sqlite_cur = self.sqlite_conn.cursor()
 
-        self.logger.info("Sqlite connection success")
+        self.logger.debug("Sqlite connection success")
 
         if self.sql_conn is None:
             self.sql_conn = pyodbc.connect(DSN=self.connection_DSN[self.data_source])
-            self.logger.info("wtp_collab sql connection success")
+            self.logger.debug("wtp_collab sql connection success")
             self.sql_cur = self.sql_conn.cursor()
 
     def commit(self):

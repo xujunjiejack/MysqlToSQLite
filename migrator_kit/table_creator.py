@@ -6,21 +6,50 @@ from connection_coordinator import  get_coordinator, DataSource
 from migrator_kit.statement_cleaner import clean_statment
 
 table_names = ["user_5r_disc_p_120415","user_5r_disc_t_120415"]
-logging.basicConfig(filename='table_not_created.logs', level=logging.INFO)
-
+logger = logging.getLogger("sql2sqlite.table_creator")
+logger.setLevel(logging.INFO)
 
 def delete_the_table(table_name, cc):
-    cc.connect()
-    sqlite_cur = cc.sqlite_cur
-    sqlite_cur.execute("DROP TABLE IF EXISTS '{0}'".format(table_name))
-    cc.close_all_connection()
+    try:
+        cc.connect()
+        sqlite_cur = cc.sqlite_cur
+        sqlite_cur.execute("DROP TABLE IF EXISTS '{0}'".format(table_name))
+        return True
+    except Exception as e:
+        logger.critical(e)
+    finally:
+        cc.close_all_connection()
+
+
+def delete_the_temp_table(table_name, temp_table_postfix, cc):
+
+    new_table_name = table_name + temp_table_postfix
+    return delete_the_table(new_table_name, cc)
+
 
 def rename_one_to_another_table(old_table_name, new_table_name, cc):
-    cc.connect()
-    sqlite_cur = cc.sqlite_cur
-    sqlite_cur.execute("ALTER TABLE {OLD_NAME} RENAME TO {NEW_NAME}".format(OLD_NAME=old_table_name,
+    try:
+        cc.connect()
+        sqlite_cur = cc.sqlite_cur
+        sqlite_cur.execute("ALTER TABLE {OLD_NAME} RENAME TO {NEW_NAME}".format(OLD_NAME=old_table_name,
                                                                             NEW_NAME=new_table_name))
-    cc.close_all_connection()
+        return True
+    except Exception as e:
+        logger.critical(e)
+        return False
+    finally:
+        cc.close_all_connection()
+
+
+def rename_the_temp_table_back_to_table(origin_table_name, temp_table_postfix, cc):
+    temp_table_name = origin_table_name + temp_table_postfix
+    return rename_one_to_another_table(temp_table_name, origin_table_name, cc)
+
+
+def rename_one_to_temp_table(old_table_name, temp_table_postfix, cc):
+    cc.connect()
+    new_table_name = old_table_name + temp_table_postfix
+    return rename_one_to_another_table(old_table_name, new_table_name, cc)
 
 
 def create_one_specific_new_table_with_temp_(table_name, cc, exporter):
@@ -65,13 +94,17 @@ def create_new_table(table_names = None, data_source = DataSource.WTP_COLLAB, ex
 
         # table name will have ` around the itself, so get rid of it before using regular
         # in the function want_to_export
-        if _create_one_table_in_sqlite_(exporter,table_name,sql_cur,sqlite_cur,f):
+        if _create_one_table_in_sqlite_(table_name,coordinator, exporter,f):
             coordinator.commit()
+
         print("------------------------------------------")
     coordinator.close_all_connection()
 
 
-def _create_one_table_in_sqlite_(exporter, table_name, sql_cur, sqlite_cur, debug_file = None):
+def _create_one_table_in_sqlite_(table_name, cc, exporter,  debug_file = None):
+    if cc.sqlite_conn is None:
+        cc.connect()
+
     if not exporter.want_to_export(table_name.strip("`")):
         return False
 
@@ -80,14 +113,15 @@ def _create_one_table_in_sqlite_(exporter, table_name, sql_cur, sqlite_cur, debu
     # get the create statement from the mysql database
     get_create_table_sql = "SHOW CREATE TABLE %s" % table_name
     try:
-        sql_cur.execute(get_create_table_sql)
+        cc.sql_cur.execute(get_create_table_sql)
     except Exception as e:
         print(e)
         logging.critical("%s: %s" % (table_name, e))
+        cc.close_all_connection()
         return False
 
     # after get the statement,clean the create statement
-    result = sql_cur.fetchone()
+    result = cc.sql_cur.fetchone()
     use_create_table_sql = clean_statment(result[1])
     if debug_file is not None:
         debug_file.write(use_create_table_sql)
@@ -95,10 +129,10 @@ def _create_one_table_in_sqlite_(exporter, table_name, sql_cur, sqlite_cur, debu
 
     # Execute the create statement
     try:
-        sqlite_cur.execute(use_create_table_sql)
+        cc.sqlite_cur.execute(use_create_table_sql)
     except Exception as e:
         print("ERROR: %s" % e)
-        logging.critical("%s: %s\n stmt: %s" % (table_name, e, use_create_table_sql))
+        logger.critical("%s: %s\n stmt: %s" % (table_name, e, use_create_table_sql))
         return False
     print("------------------------------------------")
     return True

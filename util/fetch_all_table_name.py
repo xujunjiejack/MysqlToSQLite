@@ -15,6 +15,11 @@ def read_table_names_from_sql_cursor(sql_cur):
     table_names = ["`{0}`".format(get_name_from_tuple(table_info)) for table_info in sql_tables]
     return table_names
 
+def read_table_names_without_quote(sql_cur):
+    sql_tables = read_sql_tables_from_sql_cursor(sql_cur)
+    table_names = ["{0}".format(get_name_from_tuple(table_info)) for table_info in sql_tables]
+    return table_names
+
 # abstraction for different format of the cur
 def get_name_from_tuple(table):
     #('wtp_collab', '', 'user_sample_anxietypaper_2007', 'TABLE', '')

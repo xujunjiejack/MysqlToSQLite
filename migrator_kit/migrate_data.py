@@ -162,18 +162,25 @@ class Migrater:
         self.coordinator.close_all_connection()
 
     def migrate_one_table(self, table_name):
+        #import ipdb; ipdb.set_trace()
+        self.coordinator.connect()
+        self.sql_cur = self.coordinator.sql_cur
+        self.sqlite_cur = self.coordinator.sqlite_cur
+
         self.logger.info("-----Migrating table: {0}------".format(table_name))
 
         try:
             records, desc = self.fetch_all_data_of(table_name)
         except Exception as e:
             self.logger.warn("error happens when fetching data from mysql database. Msg: %s" % e)
+            self.coordinator.close_all_connection()
             return False
 
         self.insert_records(table_name, join_field_names_with_comma_and_quotes(get_field_names(desc)), records)
 
         self.coordinator.commit()
         self.logger.info("#################################################")
+        self.coordinator.close_all_connection()
         return True
 
     def migrate_with_one_record_a_time(self, table_names):

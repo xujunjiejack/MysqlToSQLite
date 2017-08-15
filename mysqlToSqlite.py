@@ -1,16 +1,22 @@
 from connection_coordinator import DataSource, get_coordinator
 from migrator_kit.migrate_data import Migrater
 from db_exporter_kit.export_db import db_exporter, get_db_exporter
+from util.fetch_all_table_name import read_table_names_without_quote
 from db_exporter_kit.age_appender import AgeAppender
 from db_exporter_kit.data_sanitizor import DataSanitizer
 import migrator_kit.table_creator as table_creator
 from migrator_kit.checksum_table import ChecksumTable
+from util.table_process_helper import TableProcessQueue
 from os.path import join, splitext
 from loggers import logging
 from os import rename
+from os.path import exists
 import sys
 import json
 import datetime
+import functools
+import argparse
+
 
 logger = logging.getLogger("sql2sqlite.main")
 logger.setLevel(logging.INFO)
@@ -22,29 +28,47 @@ logger.setLevel(logging.INFO)
 db_directory = ""
 db_name = ""
 db_archive = ""
+checksum_path = ""
 
-# The code should be dedicated to the copy. Not mutate. We need a seperated function for this
+# The code should be dedicated to the copy. Not mutate. We need a separated function for this
 #
+trackers = ["data_1_tr", "data_3_tr", "data_4_tr", "data_5_tr", "data_5_tr", "data_6_tr", "data_r1_tr", "data_r1_tr",
+            "data_c3_tr", "data_mr_tr", "data_r1_tr", "data_s_tr", "data_at_dates", "data_sd_tr", "data_w14_tr"]
+
+def put_trackers_to_the_front(data_tables):
+    return_lists = []
+    for table in data_tables:
+        if table not in trackers:
+            return_lists.append(table)
+        else:
+            return_lists.insert(0, table)
+    return return_lists
+
 
 def build_new_db_from_all_tables(cc):
 
-    # Now we need to truncate
+    m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter(), cc=cc)
+    age_appender = AgeAppender(cc, get_db_exporter())
+    sanitzer = DataSanitizer(cc, get_db_exporter())
+
+    cc.connect()
+
     table_creator.create_new_table(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
 
-    m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
-    # For test purpose
-    # m.migrate_some_tables(["`calc_mr_pb_t`","`data_4_zy_e2`","`data_3_le_m`","`user_5_dps_p_2010_0210`","`data_4_cortid`","`data_4_au_m`"])
-    m.migrate_all_tables()
+    cc.connect()
+    all_tables = read_table_names_without_quote(cc.sql_cur)
+    #all_tables = ["calc_mr_pb_t","data_4_zy_e2","data_3_le_m","user_5_dps_p_2010_0210","data_4_cortid","data_4_au_m"]
+    all_tables_queue = TableProcessQueue(all_tables)
 
-    ageAppender = AgeAppender(cc, get_db_exporter())
-    ageAppender.append_age()
-
-    sanitzer = DataSanitizer(cc, get_db_exporter())
-    sanitzer.sanitizer_collab()
+    all_tables_queue.process_by(m.migrate_one_table)\
+                    .process_by(age_appender.append_age_to_one_table)\
+                    .process_by(sanitzer.sanitize_one_table)
 
     checksum_table = ChecksumTable()
-    # Based on the succesful tables
-    #
+    checksum_table.create_new_checksum_for_tables(all_tables_queue.success_tables(), cc)
+    logger.critical("Success tables are: {0}".format(all_tables_queue.success_tables()))
+
+    logger.critical("Failure tables are: {0}".format(all_tables_queue.failure_tables()))
 
     return
 
@@ -96,8 +120,8 @@ def update_the_db(cc):
         except Exception as e:
 
             failure_table.append(table)
-            # delete the temporary table
-            table_creator.delete_the_table(table, cc)
+            # delete the origin table
+            table_creator.delete_the_table(temp_table, cc)
             table_creator.rename_one_to_another_table(temp_table, table, cc)
             logger.critical(e)
 
@@ -115,15 +139,97 @@ def update_the_db(cc):
     #   do data cleaning
     # I need a transaction and rollback system
 
+def update_the_db_development(cc):
+    dob_updated_info_tables = ["gen_twins", "gen_parentdates"]
+    not_imported_tables = get_db_exporter().unwanted_tables()
+
+    checksum_table = ChecksumTable(ignore_tables=dob_updated_info_tables + not_imported_tables)
+    new_tables, updated_tables = checksum_table.tables_for_migration(cc)
+
+    # the update of the tracker should be put before the computation of the age for other tables
+    new_tables_with_trackers_front = put_trackers_to_the_front(new_tables)
+    updated_tables_with_trackers_front = put_trackers_to_the_front(updated_tables)
+
+    import ipdb; ipdb.set_trace()
+    print(new_tables, updated_tables)
+
+    m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter(), cc=cc)
+    age_appender = AgeAppender(cc, get_db_exporter())
+    sanitzer = DataSanitizer(cc, get_db_exporter())
+
+    test_new_tables = ["data_4_au_t", "data_5_au_t", "data_rd_au_t"]
+
+    # The dob tables should not show up in either the update table and new table
+    # It will be imported everyday.
+
+    dob_tables_process_queue = TableProcessQueue(dob_updated_info_tables)
+
+    updated_tables_process_queue = TableProcessQueue(updated_tables_with_trackers_front)
+    new_tables_process_queue = TableProcessQueue(new_tables_with_trackers_front)
+
+    # Set up the partial function for later use
+    rename_table_to_temp_table_with_origin_temp = functools.partial(table_creator.rename_one_to_temp_table,
+                                                                    temp_table_postfix="_origin_temp", cc=cc)
+    delete_temp_table_with_origin_temp = functools.partial(table_creator.delete_the_temp_table,
+                                                           temp_table_postfix="_origin_temp",
+                                                           cc=cc)
+    rename_temp_table_with_origin_temp_back_to_origin = functools.partial(table_creator.rename_the_temp_table_back_to_table,
+                                                                        temp_table_postfix="_origin_temp", cc=cc)
+    create_new_table_from_wtp_data = functools.partial(table_creator._create_one_table_in_sqlite_ , cc=cc, exporter = get_db_exporter()
+                                                       )
+
+    # copy all of the table to its corresponding temp table
+    # I assume that the dob_tables will always be there
+    updated_tables_process_queue.process_by(rename_table_to_temp_table_with_origin_temp)
+    dob_tables_process_queue.process_by(rename_table_to_temp_table_with_origin_temp)
+
+    # import ipdb;  ipdb.set_trace()
+    # This will delete the failure tables to prevent the tables get processed later
+    updated_tables_process_queue.treat_fail_tables_as_error(rename_temp_table_with_origin_temp_back_to_origin)
+    dob_tables_process_queue.treat_fail_tables_as_error(rename_temp_table_with_origin_temp_back_to_origin)
+
+    # dob tables can't get sanitized before used by other for computation, because the dob fields are all sensitive data
+    roadmap_for_dob_tables = [create_new_table_from_wtp_data,  m.migrate_one_table]
+    roadmap = [create_new_table_from_wtp_data, m.migrate_one_table,
+               age_appender.append_age_to_one_table, sanitzer.sanitize_one_table, delete_temp_table_with_origin_temp]
+
+    # load in the dob tables
+    dob_tables_process_queue.process_by_functions_chain_(roadmap_for_dob_tables)
+
+    updated_tables_process_queue.process_by_functions_chain_(roadmap)
+    new_tables_process_queue.process_by_functions_chain_(roadmap)
+
+    dob_tables_process_queue.process_by_functions_chain_([sanitzer.sanitize_one_table, delete_temp_table_with_origin_temp])
+
+    checksum_table.update_the_checksum_of_successful_tables(updated_tables_process_queue.success_tables() +
+                                                            new_tables_process_queue.success_tables())
+
+    # detail with failure tables
+    def restore_origin_table_from_temp(table):
+        return  table_creator.delete_the_table(table , cc) and \
+                table_creator.rename_the_temp_table_back_to_table(table, "_origin_temp", cc)
+
+    updated_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)
+
+    logger.critical("Success tables are: {0}, {1}".format(updated_tables_process_queue.success_tables(),
+                                                          new_tables_process_queue.success_tables()))
+
+    logger.critical("Failure tables are: {0}, {1}".format(updated_tables_process_queue.failure_tables(),
+                                                          new_tables_process_queue.failure_tables()))
+    new_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)
+    dob_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)
+
 def load_path():
     with open("file_path.json", "r") as f:
         setting = json.load(f)
         global db_name
         global db_archive
         global db_directory
+        global checksum_path
         db_name = setting["db_name"]
         db_directory = setting["db_directory"]
         db_archive = setting["archive_dir"]
+        checksum_path = setting["checksum_name"]
         return
 
 def generate_archive_file_name(origin_filename):
@@ -144,7 +250,13 @@ def import_all_of_the_data():
 
     cc.logger.info("backing up the origin db")
     # Rename the origin db file, put it into an archive folder, and then rename the temporary db to the db.
+
     origin_file_path = join(db_directory, db_name)
+
+    if not exists(origin_file_path):
+        rename(temp_db_path, origin_file_path)
+        return
+
     archive_file_name = generate_archive_file_name(db_name)
     archive_file_path = join(db_archive, archive_file_name)
     rename(origin_file_path, archive_file_path)
@@ -155,7 +267,7 @@ def increment_update_wtp_collab():
     db_path = join(db_directory, db_name)
     cc = get_coordinator(data_souce=DataSource.WTP_DATA)
     cc.sqlite_filepath = db_path
-    update_the_db(cc)
+    update_the_db_development(cc)
 
 
 def main(arg):
@@ -173,4 +285,6 @@ def main(arg):
 
 if __name__ == "__main__":
     load_path()
+    parser = argparse.ArgumentParser(description="Import Data to Database")
+
     main(sys.argv)

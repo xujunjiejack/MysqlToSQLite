@@ -65,3 +65,32 @@ class DataSanitizer:
         self.cc.close_all_connection()
         return
 
+    def sanitize_one_table(self, table):
+
+
+        self.cc.connect()
+        self.con = self.cc.sqlite_conn
+        failed_columns = []  # sanitize returns a list of failed columns or throws an exception
+        try:
+            failed_columns = self.db_exporter.sanitize(table, con=self.con)
+        except AssertionError as e:  # happens if table could not be dropped some reason
+            self.logger.critical(str(e))
+            self.cc.close_all_connection()
+            return False
+        except TypeError as e:  # happens if settings file is wrong
+            self.logger.critical(str(e))
+            self.cc.close_all_connection()
+            return False
+
+        if failed_columns is None:
+            pass
+        elif len(failed_columns) > 0:
+            self.logger.critical('__%s__:' % table)
+            self.logger.critical('{')
+            for col in failed_columns:
+                col_name = col[0]  # it's a tuple the first index is the column name
+                expl = str(col[1])  # the second ndex is the error
+                self.logger.critical('\t%s: %s' % (col_name, expl))
+        self.cc.close_all_connection()
+        return True
+
