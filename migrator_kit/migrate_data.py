@@ -3,12 +3,14 @@ import sqlite3
 from datetime import datetime
 from connection_coordinator import get_coordinator, DataSource
 from util.fetch_all_table_name import read_table_names_from_sql_cursor
-
+from typing import *
 
 logging.basicConfig(filename="failed_insert_record", level=logging.INFO)
+from db_exporter_kit.export_db import exporter
 
 
-def get_field_names(desc): return [x[0] for x in desc]
+def get_field_names(desc) -> List[str]: return [x[0] for x in desc]
+
 
 def clean_record(record):
     """
@@ -59,13 +61,12 @@ def join_records_to_query(records):
     return delimiter.join(records_list)
 
 
-def join_field_names_with_comma_and_quotes(field_names):
+def join_field_names_with_comma_and_quotes(field_names) -> str:
     """
         Each field will be surrounded with ` to indicate that this is a column
     :param field_names:
     :return:
     """
-    #field_names = ["`%s`"%x for x in field_names]
     return ",".join(map(lambda x: "`%s`"%x, field_names))
 
 
@@ -93,7 +94,7 @@ class Migrater:
 
     # support migrating data from wtp_data, but be careful, it's not good to migrate from wtp_data due to the
     # sensitive data it has
-    def __init__(self, data_source=DataSource.WTP_COLLAB, exporter=None, cc=None):
+    def __init__(self, data_source: DataSource =DataSource.WTP_COLLAB, exporter: Optional[exporter] = None, cc=None):
         # prepare logger
         self.logger = logging.getLogger("sql2sqlite.migration")
         self.logger.setLevel(logging.INFO)
@@ -109,12 +110,12 @@ class Migrater:
         self.sqlite_cur = self.coordinator.sqlite_cur
 
         self.already_added_table_list = []
-        self.weird_error_table_dic = {}
+        self.weird_error_table_dic = {}  # type : Dict[str, str]
         self.critical_failed_table = set()
         self.exporter = exporter
 
     def get_insert_statment(self, table_name, fieldnames, records):
-        return "INSERT INTO {0} ({1}) VALUES {2}".format(table_name, fieldnames, records)
+        return "INSERT INTO `{0}` ({1}) VALUES {2}".format(table_name, fieldnames, records)
 
     def set_up_connection(self):
         self.coordinator.connect()
@@ -161,8 +162,8 @@ class Migrater:
         self.dump_error_tables()
         self.coordinator.close_all_connection()
 
-    def migrate_one_table(self, table_name):
-        #import ipdb; ipdb.set_trace()
+    def migrate_one_table(self, table_name) -> bool:
+
         self.coordinator.connect()
         self.sql_cur = self.coordinator.sql_cur
         self.sqlite_cur = self.coordinator.sqlite_cur
@@ -208,8 +209,8 @@ class Migrater:
             raise ValueError("None of the table gets migrated")
         return self.already_added_table_list
 
-    def fetch_all_data_of(self, table_name):
-        self.sql_cur.execute("SELECT * FROM %s" % table_name)
+    def fetch_all_data_of(self, table_name: str) -> Tuple[List, List]:
+        self.sql_cur.execute("SELECT * FROM `%s`" % table_name)
         return self.sql_cur.fetchall(), self.sql_cur.description
 
     def insert_records(self, table_name, fieldnames_query, records):
@@ -222,7 +223,6 @@ class Migrater:
 
             stmt = self.get_insert_statment(table_name, fieldnames_query, join_each_record(record))
             self.execute_insert_sql(stmt, table_name)
-
 
     def execute_insert_sql(self, insert_sql, table_name):
 

@@ -16,7 +16,7 @@ import json
 import datetime
 import functools
 import argparse
-
+from typing import *
 
 logger = logging.getLogger("sql2sqlite.main")
 logger.setLevel(logging.INFO)
@@ -25,18 +25,20 @@ logger.setLevel(logging.INFO)
 # Then I can test everything, and move on to implementation of the back arrow.
 # configure connection
 
-db_directory = ""
-db_name = ""
-db_archive = ""
-checksum_path = ""
+db_directory = "" # type: str
+db_name = "" # type: str
+db_archive = "" # type: str
+checksum_path = "" # type: str
 
 # The code should be dedicated to the copy. Not mutate. We need a separated function for this
 #
 trackers = ["data_1_tr", "data_3_tr", "data_4_tr", "data_5_tr", "data_5_tr", "data_6_tr", "data_r1_tr", "data_r1_tr",
             "data_c3_tr", "data_mr_tr", "data_r1_tr", "data_s_tr", "data_at_dates", "data_sd_tr", "data_w14_tr"]
+# type: List[str]
 
-def put_trackers_to_the_front(data_tables):
-    return_lists = []
+
+def put_trackers_to_the_front(data_tables : List[str]) -> List[str]:
+    return_lists = [] # type : List[str]
     for table in data_tables:
         if table not in trackers:
             return_lists.append(table)
@@ -57,7 +59,9 @@ def build_new_db_from_all_tables(cc):
 
     cc.connect()
     all_tables = read_table_names_without_quote(cc.sql_cur)
-    #all_tables = ["calc_mr_pb_t","data_4_zy_e2","data_3_le_m","user_5_dps_p_2010_0210","data_4_cortid","data_4_au_m"]
+    # all_tables = ["calc_mr_pb_t","data_4_zy_e2","data_3_le_m","user_5_dps_p_2010_0210","data_4_cortid","data_4_au_m"]
+    # all_tables = ['data_1_tr','arch_interview 1 response tracker', 'arch_interview 3 response tracker', 'arch_interview 4 response tracker', 'arch_zyg_follow up', 'trash_hhg_sd interventions', 'user_cla_complete sd screener data', 'user_cla_extended milw zips', 'user_cla_sd mpq by twin', 'user_cla_sd tracker dates spc flag']
+
     all_tables_queue = TableProcessQueue(all_tables)
 
     all_tables_queue.process_by(m.migrate_one_table)\
@@ -65,6 +69,7 @@ def build_new_db_from_all_tables(cc):
                     .process_by(sanitzer.sanitize_one_table)
 
     checksum_table = ChecksumTable()
+    cc.connect()
     checksum_table.create_new_checksum_for_tables(all_tables_queue.success_tables(), cc)
     logger.critical("Success tables are: {0}".format(all_tables_queue.success_tables()))
 
@@ -72,60 +77,6 @@ def build_new_db_from_all_tables(cc):
 
     return
 
-def update_the_db(cc):
-    # If only update, then I should care less about the performance, because the number of tables needed updated should be
-    # relatively small.
-
-    checksum_table = ChecksumTable()
-    tables = checksum_table.tables_for_migration(cc)
-
-    m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter(), cc=cc)
-    age_appender = AgeAppender(cc, get_db_exporter())
-    sanitzer = DataSanitizer(cc, get_db_exporter())
-
-    successful_table = []
-    failure_table = []
-    print(tables)
-    # for each table needed for proceeded
-
-    # next step. Make sure the exception will be thrown to this level
-    for table in tables:
-        temp_table = table + "_origin_as_temp"
-        # The temporary table holds the original table.
-        try:
-            table_creator.rename_one_to_another_table(table, temp_table, cc)
-        except Exception as e:
-            # seperate this exception from the rest of the process.
-            # If the program encounters an exception at this point, then the origin table should have its origin data,
-            # because it hasn't got changed into the temp_table
-
-            # Since the origin data is still in the table, then I can't drop the table, or I will lose the data in wtp_collab
-            # This lose of data is the least thing I want to happen.
-            failure_table.append(table)
-            logger.critical(e)
-            continue
-
-        try:
-            table_creator.create_new_table(table, data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
-
-            m.migrate_some_tables(table)
-
-            age_appender.append_age(table)
-
-            sanitzer.sanitizer_collab(table)
-
-            table_creator.delete_the_table(temp_table, cc)
-
-            successful_table.append(table)
-        except Exception as e:
-
-            failure_table.append(table)
-            # delete the origin table
-            table_creator.delete_the_table(temp_table, cc)
-            table_creator.rename_one_to_another_table(temp_table, table, cc)
-            logger.critical(e)
-
-    checksum_table.update_the_checksum_of_successful_tables(successful_table)
 
     # the best way is to create a new table. At the end of the process, the response towards success should
     # be deleting the origin table, and rename it. If the response is failure, then delete this temporary table.
@@ -140,6 +91,7 @@ def update_the_db(cc):
     # I need a transaction and rollback system
 
 def update_the_db_development(cc):
+
     dob_updated_info_tables = ["gen_twins", "gen_parentdates"]
     not_imported_tables = get_db_exporter().unwanted_tables()
 
@@ -150,7 +102,6 @@ def update_the_db_development(cc):
     new_tables_with_trackers_front = put_trackers_to_the_front(new_tables)
     updated_tables_with_trackers_front = put_trackers_to_the_front(updated_tables)
 
-    import ipdb; ipdb.set_trace()
     print(new_tables, updated_tables)
 
     m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter(), cc=cc)
@@ -168,8 +119,9 @@ def update_the_db_development(cc):
     new_tables_process_queue = TableProcessQueue(new_tables_with_trackers_front)
 
     # Set up the partial function for later use
-    rename_table_to_temp_table_with_origin_temp = functools.partial(table_creator.rename_one_to_temp_table,
-                                                                    temp_table_postfix="_origin_temp", cc=cc)
+    rename_table_to_temp_table_with_origin_temp = \
+        functools.partial(table_creator.rename_one_to_temp_table,temp_table_postfix="_origin_temp", cc=cc)
+
     delete_temp_table_with_origin_temp = functools.partial(table_creator.delete_the_temp_table,
                                                            temp_table_postfix="_origin_temp",
                                                            cc=cc)
@@ -270,21 +222,24 @@ def increment_update_wtp_collab():
     update_the_db_development(cc)
 
 
-def main(arg):
-    logger.info("Program starts")
+if __name__ == "__main__":
+    load_path()
+    parser = argparse.ArgumentParser(description="Import Data to SQLite")
+    parser.add_argument('-a', help="update all db data at once", action='store_true')
+    parser.add_argument('-u', help="update data incrementally", action='store_true')
+    args = parser.parse_args()
 
-    if arg[1] == "-a":
+    logger.info("Program starts")
+    if args.a and args.u:
+        logger.critical("You can't enter '-a' and '-u' as arguments at the same time")
+
+    elif args.a:
         import_all_of_the_data()
 
-    elif arg[1] == "-u":
+    elif args.u:
         # it's the incremental update
         increment_update_wtp_collab()
 
     # assume that the cc.sqlite_conn here has closed
     logger.info("Program ends")
 
-if __name__ == "__main__":
-    load_path()
-    parser = argparse.ArgumentParser(description="Import Data to Database")
-
-    main(sys.argv)
