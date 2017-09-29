@@ -34,13 +34,13 @@ class TableProcessQueue:
     def failure_tables(self) -> List[str]:
         return self._list_of_tables_with_result_state_(ResultState.FAILURE)
 
-    def _list_of_tables_with_result_state_(self, result_state: ResultState):
+    def _list_of_tables_with_result_state_(self, result_state: ResultState) -> List[str]:
         return [process_result.table_name for process_result in self.process_list
                 if process_result.result == result_state]
 
     # This function should be type of table_name => bool
     # f is for each table inside
-    def process_by(self,f : ProcessOneTableFunction):
+    def process_by(self, f: ProcessOneTableFunction):
         self._process_by_for_tables_with_filter_(f,
                             state_filter=lambda state: state == ResultState.SUCCESS or state == ResultState.WAITING)
         return self
@@ -72,14 +72,14 @@ class TableProcessQueue:
 
     # This function should be type of table_name => bool
     # f is for each table inside
-    def _process_by_for_tables_with_filter_(self, f: ProcessOneTableFunction, state_filter: Callable[[ResultState], bool]):
+    def _process_by_for_tables_with_filter_(self, f: ProcessOneTableFunction, state_filter: Callable[[ResultState], bool]) -> None:
         # We only process the result that
         for table_result in self.process_list:
             if state_filter(table_result.result):
                 # Run function
                 table_result.result = self._apply_function_to_table_(f, table_result.table_name)
 
-    def _apply_function_to_table_(self, f: ProcessOneTableFunction, table_name):
+    def _apply_function_to_table_(self, f: ProcessOneTableFunction, table_name: str) -> ResultState:
         function_success = f(table_name)
         if function_success:
             return ResultState.SUCCESS

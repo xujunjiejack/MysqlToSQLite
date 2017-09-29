@@ -12,6 +12,10 @@ import os
 import sys
 import pyodbc
 import json
+from typing import *
+
+NewTables = List[str]
+UpdateTables = List[str]
 
 class ChecksumTable:
 
@@ -23,11 +27,22 @@ class ChecksumTable:
         else:
             self.file_name = checksum_file_name
         self.cur_checksum = None
-        self.old_checksum = None
+        self.saved_checksum = None
         self.ignore_tables = ignore_tables
 
     def checksum_file_exists(self):
         return os.path.exists(self.file_name) and os.stat(self.file_name).st_size > 10
+
+    def connect_to_db(self, sql_con):
+        self.cur_checksum = self.get_all_checksum(sql_con)
+
+    def load_in_file(self):
+        if not self.checksum_file_exists():
+            raise FileNotFoundError("No checksum file can be found. You probably want to reimport the database")
+
+        f = open(self.file_name, "r")
+        self.saved_checksum = json.load(f)
+        f.close()
 
     def get_all_checksum(self, sql_con):
         cur = sql_con.cursor()
@@ -35,7 +50,6 @@ class ChecksumTable:
         rows = cur.fetchall()
         # Dictionary
         checksum_dict = {}
-
         for row in rows:
             table_name = row[0]
             cur.execute("CHECKSUM TABLE `{0}`;".format(table_name))
@@ -54,6 +68,29 @@ class ChecksumTable:
             checksum_dict[table_name[9:]] = checksum
         return checksum_dict
 
+    def tables_for_migration(self, cc) ->Tuple[NewTables, UpdateTables]:
+        cc.connect()
+
+        # Save the current checksum, for later update use.
+        new_table, updated_table, self.saved_checksum = self._get_tables_for_migration_(cc.sql_conn)
+
+        cc.close_all_connection()
+        return new_table, updated_table
+
+    def create_new_checksum_for_tables(self, tables, cc):
+
+        cc.connect()
+
+        cur_checksum = self.cur_checksum
+        final_checksum = {}
+        for table in cur_checksum:
+            if table in tables:
+                final_checksum[table] = cur_checksum[table]
+
+        self._create_new_file_with_checksum_(checksum_dict=final_checksum)
+        cc.close_all_connection()
+        return
+
     def _create_new_file_with_checksum_(self,con = None, checksum_dict = None):
         f = open(self.file_name, "w")
 
@@ -64,28 +101,6 @@ class ChecksumTable:
             checksum_dict = self.get_all_checksum(con)
         json.dump(checksum_dict, f)
         f.close()
-
-    def tables_for_migration(self, cc):
-        cc.connect()
-
-        # Save the current checksum, for later update use.
-        new_table, updated_table, self.cur_checksum, self.old_checksum = self._get_tables_for_migration_(cc.sql_conn)
-
-        cc.close_all_connection()
-        return new_table, updated_table
-
-    def create_new_checksum_for_tables(self, tables, cc):
-
-        cc.connect()
-        cur_checksum = self.get_all_checksum(sql_con=cc.sql_conn)
-        final_checksum = {}
-        for table in cur_checksum:
-            if table in tables:
-                final_checksum[table] = cur_checksum[table]
-
-        self._create_new_file_with_checksum_(checksum_dict=final_checksum)
-        cc.close_all_connection()
-        return
 
     def update_the_checksum_of_successful_tables(self,successful_tables):
         # This should be called at the end of the program to make sure the tables that have been updated
@@ -99,7 +114,7 @@ class ChecksumTable:
                 final_checksum[table] = self.cur_checksum[table]
             else:
                 try:
-                    final_checksum[table] = self.old_checksum[table]
+                    final_checksum[table] = self.saved_checksum[table]
                 except KeyError as e:
                     print(e)
 
@@ -107,20 +122,8 @@ class ChecksumTable:
         return
 
     def _get_tables_for_migration_(self, con):
-        # If the json file doesn't exist, it will directly produce one. Then all of the tables will be
-        # returned for migration
-        if not self.checksum_file_exists():
-            self._create_new_file_with_checksum_(con)
-            return
-
-        # If the json file exists,
-        #       The new checksum will be fetched from the wtp_data
-        cur_checksum_dict = self.get_all_checksum(con)
-
-        #       The class will then read the file into the memory.
-        f = open(self.file_name, "r")
-        old_checksum_dict = json.load(f)
-        f.close()
+        cur_checksum_dict = self.cur_checksum
+        saved_checksum_dict = self.saved_checksum
 
         updated_tables = []
         new_tables = []
@@ -128,7 +131,7 @@ class ChecksumTable:
         for table in cur_checksum_dict:
             cur_checksum = cur_checksum_dict[table]
             try:
-                old_checksum = old_checksum_dict[table]
+                old_checksum = saved_checksum_dict[table]
                 if table in self.ignore_tables:
                     continue
 
@@ -141,7 +144,7 @@ class ChecksumTable:
                 new_tables.append(table)
         #       and return the table that fits the criteria for migration
 
-        return new_tables, updated_tables, cur_checksum_dict, old_checksum_dict
+        return new_tables, updated_tables, saved_checksum_dict
 
 
 

@@ -1,6 +1,6 @@
 import logging
-
-from util.fetch_all_table_name import  read_table_names_from_sql_cursor
+from typing import *
+from util.fetch_all_table_name import read_table_names_from_sql_cursor, read_table_names_without_quote
 
 from connection_coordinator import  get_coordinator, DataSource
 from migrator_kit.statement_cleaner import clean_statment
@@ -62,7 +62,10 @@ def create_one_specific_new_table_with_temp_(table_name, cc, exporter):
 
 # Gonna refactor the code to allow a new function
 
-def create_new_table(table_names = None, data_source = DataSource.WTP_COLLAB, exporter = None):
+def create_new_table(table_names : Optional[Union[str, List[str]]] = None ,
+                     data_source = DataSource.WTP_COLLAB,
+                     exporter = None) \
+                        -> (List[str], List[str]):
     '''
         This function create new tables in sqlite based on the data source. If none
         of table_names are given, this function will create tables for all data source in
@@ -82,6 +85,9 @@ def create_new_table(table_names = None, data_source = DataSource.WTP_COLLAB, ex
     sqlite_cur = coordinator.sqlite_cur
     sql_cur = coordinator.sql_cur
 
+    success_tables = []
+    failure_tables = []
+
     # iterate through all tables to get create table statments list
     # If no table names have been specified
     if table_names is None:
@@ -94,11 +100,34 @@ def create_new_table(table_names = None, data_source = DataSource.WTP_COLLAB, ex
 
         # table name will have ` around the itself, so get rid of it before using regular
         # in the function want_to_export
-        if _create_one_table_in_sqlite_(table_name,coordinator, exporter,f):
+        if _create_one_table_in_sqlite_(table_name, coordinator, exporter, f):
             coordinator.commit()
+            success_tables.append(table_name)
+        else:
+            failure_tables.append(table_name)
 
         print("------------------------------------------")
     coordinator.close_all_connection()
+    return success_tables, failure_tables
+
+def _get_origin_create_statement_for_a_table_(table_name: str, cc) -> Optional[str]:
+    if cc.sqlite_conn is None:
+        cc.connect()
+
+    print("Fetching create table stmt for table: %s" % table_name)
+
+    # get the create statement from the mysql database
+    get_create_table_sql = "SHOW CREATE TABLE %s" % table_name
+    try:
+        cc.sql_cur.execute(get_create_table_sql)
+    except Exception as e:
+        print(e)
+        logging.critical("%s: %s" % (table_name, e))
+        cc.close_all_connection()
+        return None
+
+    # after get the statement,clean the create statement
+    return cc.sql_cur.fetchone()[1]
 
 
 def _create_one_table_in_sqlite_(table_name, cc, exporter,  debug_file = None):
@@ -133,10 +162,39 @@ def _create_one_table_in_sqlite_(table_name, cc, exporter,  debug_file = None):
     except Exception as e:
         print("ERROR: %s" % e)
         logger.critical("%s: %s\n stmt: %s" % (table_name, e, use_create_table_sql))
+        import ipdb;ipdb.set_trace()
         return False
     print("------------------------------------------")
     return True
 
+
+def findTables():
+
+    StmtLine = str
+    TableName = str
+
+    def _whether_smallint_in_(creating_stmts: List[StmtLine])-> bool:
+        for index, line in enumerate(creating_stmts):
+            if " smallint(5) " in line:
+                return True
+        return False
+
+    cc = get_coordinator(data_souce=DataSource.WTP_DATA)
+    cc.sqlite_filepath = 'C:/Users/jxu259/Desktop/sqlite/wtp_collab.db'
+    cc.connect()
+    # list = read_sqlite_tables_from_sqlite_cursor(cur=cc.sqlite_conn.cursor())
+    l = read_table_names_from_sql_cursor(cc.sql_cur)  # type: List[TableName]
+
+    tables_with_smallint = []
+    for table_name in l:
+        creating_stmt = _get_origin_create_statement_for_a_table_(table_name, cc)
+        if creating_stmt is not None:
+            if _whether_smallint_in_(creating_stmt.split("\n")):
+                tables_with_smallint.append(table_name)
+
+    print(tables_with_smallint)
+
+#  print(list)
 
 def test():
     pass
@@ -153,3 +211,5 @@ def test():
     #sqlite_conn.execute(use_create_table_sql)
     #sqlite_conn.commit()
     #sqlite_conn.close()
+
+#findTables()

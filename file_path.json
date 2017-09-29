@@ -1,6 +1,6 @@
 {
   "db_directory":"C:/Users/jxu259/Desktop/sqlite/",
-  "db_name":"wtp_collab_test_2.db",
+  "db_name":"wtp_collab.db",
   "archive_dir": "C:/Users/jxu259/Desktop/sqlite/test/",
-  "checksum_name":"checksum_test"
+  "checksum_name":"checksum.json"
 }

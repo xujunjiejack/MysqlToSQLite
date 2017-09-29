@@ -7,6 +7,7 @@ from db_exporter_kit.data_sanitizor import DataSanitizer
 import migrator_kit.table_creator as table_creator
 from migrator_kit.checksum_table import ChecksumTable
 from util.table_process_helper import TableProcessQueue
+from connection_coordinator import ConnectionCoordinator
 from os.path import join, splitext
 from loggers import logging
 from os import rename
@@ -21,14 +22,20 @@ from typing import *
 logger = logging.getLogger("sql2sqlite.main")
 logger.setLevel(logging.INFO)
 
-
-# Then I can test everything, and move on to implementation of the back arrow.
-# configure connection
+# One huge problem for the design of this program is its verbose and hard to remember.
+# Even though I wrote it, I still have to acknowledge that I don't how to find a way to
+# make the code intuitive and less error prone. More effort should be put on the thought
+# of the design but I don't have time, and it probably needs a major change in thinking.
+#
+#               JJ 9/29/2017
 
 db_directory = "" # type: str
 db_name = "" # type: str
 db_archive = "" # type: str
 checksum_path = "" # type: str
+
+UpdateTables = List[str]
+NewTables = List[str]
 
 # The code should be dedicated to the copy. Not mutate. We need a separated function for this
 #
@@ -36,6 +43,7 @@ trackers = ["data_1_tr", "data_3_tr", "data_4_tr", "data_5_tr", "data_5_tr", "da
             "data_c3_tr", "data_mr_tr", "data_r1_tr", "data_s_tr", "data_at_dates", "data_sd_tr", "data_w14_tr"]
 # type: List[str]
 
+dob_updated_info_tables = ["gen_twins", "gen_parentdates"]
 
 def put_trackers_to_the_front(data_tables : List[str]) -> List[str]:
     return_lists = [] # type : List[str]
@@ -47,7 +55,7 @@ def put_trackers_to_the_front(data_tables : List[str]) -> List[str]:
     return return_lists
 
 
-def build_new_db_from_all_tables(cc):
+def build_new_db_from_all_tables(cc : ConnectionCoordinator):
 
     m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter(), cc=cc)
     age_appender = AgeAppender(cc, get_db_exporter())
@@ -55,7 +63,9 @@ def build_new_db_from_all_tables(cc):
 
     cc.connect()
 
-    table_creator.create_new_table(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
+    s_t, f_t = table_creator.create_new_table(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
+    #print(s_t)
+    #print(f_t)
 
     cc.connect()
     all_tables = read_table_names_without_quote(cc.sql_cur)
@@ -68,8 +78,9 @@ def build_new_db_from_all_tables(cc):
                     .process_by(age_appender.append_age_to_one_table)\
                     .process_by(sanitzer.sanitize_one_table)
 
-    checksum_table = ChecksumTable()
+    checksum_table = ChecksumTable(checksum_file_name=checksum_path)
     cc.connect()
+    checksum_table.connect_to_db(cc.sql_conn)
     checksum_table.create_new_checksum_for_tables(all_tables_queue.success_tables(), cc)
     logger.critical("Success tables are: {0}".format(all_tables_queue.success_tables()))
 
@@ -90,19 +101,41 @@ def build_new_db_from_all_tables(cc):
     #   do data cleaning
     # I need a transaction and rollback system
 
-def update_the_db_development(cc):
 
-    dob_updated_info_tables = ["gen_twins", "gen_parentdates"]
+def default_checksum_table():
     not_imported_tables = get_db_exporter().unwanted_tables()
+    return ChecksumTable(ignore_tables=dob_updated_info_tables + not_imported_tables, checksum_file_name=checksum_path)
 
-    checksum_table = ChecksumTable(ignore_tables=dob_updated_info_tables + not_imported_tables)
+
+def update_the_db_development_based_on_checksum_table(cc: ConnectionCoordinator):
+    checksum_table = default_checksum_table()
+    checksum_table.connect_to_db(cc.sql_conn)
+    checksum_table.load_in_file()
     new_tables, updated_tables = checksum_table.tables_for_migration(cc)
+    update_the_db_development(cc, new_tables=new_tables, updated_tables=updated_tables, checksum_table = checksum_table)
+
+
+def update_the_db_development(cc: ConnectionCoordinator,
+                              new_tables:Optional[List[str]] = None,
+                              updated_tables:Optional[List[str]] = None,
+                              checksum_table: ChecksumTable = default_checksum_table()):
+    cc.connect()
+    checksum_table.connect_to_db(cc.sql_conn)
+
+    if checksum_table.cur_checksum is None:
+        checksum_table.load_in_file()
+
+    # if the function called with updated_tables,
+    if new_tables is None:
+        new_tables = []
+    if updated_tables is None:
+        updated_tables = []
 
     # the update of the tracker should be put before the computation of the age for other tables
     new_tables_with_trackers_front = put_trackers_to_the_front(new_tables)
     updated_tables_with_trackers_front = put_trackers_to_the_front(updated_tables)
 
-    print(new_tables, updated_tables)
+   # print(new_tables, updated_tables)
 
     m = Migrater(data_source=DataSource.WTP_DATA, exporter=get_db_exporter(), cc=cc)
     age_appender = AgeAppender(cc, get_db_exporter())
@@ -171,6 +204,19 @@ def update_the_db_development(cc):
     new_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)
     dob_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)
 
+
+def show_changed_table(cc: ConnectionCoordinator) -> None:
+    # get the checksum_table
+    # call a function to return the table
+    checksum_table = default_checksum_table()
+    checksum_table.connect_to_db(cc.sql_conn)
+    checksum_table.load_in_file()
+    new_tables, updated_tables = checksum_table.tables_for_migration(cc)
+    print("New Tables: {0}".format(new_tables))
+    print("Updatged Tables: {0}".format(updated_tables))
+
+    return
+
 def load_path():
     with open("file_path.json", "r") as f:
         setting = json.load(f)
@@ -219,19 +265,36 @@ def increment_update_wtp_collab():
     db_path = join(db_directory, db_name)
     cc = get_coordinator(data_souce=DataSource.WTP_DATA)
     cc.sqlite_filepath = db_path
-    update_the_db_development(cc)
+    cc.connect()
+    update_the_db_development_based_on_checksum_table(cc)
 
+#updated = ['arch_demographics', 'arch_ibq_respondent1', 'arch_ibq_respondent2', 'arch_ibq_respondent3', 'arch_int1_bci', 'arch_int1_bfi_respondent1', 'arch_int1_bfi_respondent2', 'arch_int1_bfi_respondent3', 'arch_int1_cbq_respondent1', 'arch_int1_cbq_respondent2', 'arch_int1_ccare', 'arch_int1_d_cbq', 'arch_int1_d_icq', 'arch_int1_d_pcq', 'arch_int1_d_tbaq', 'arch_int1_feq_respondent1', 'arch_int1_feq_respondent2', 'arch_int1_feq_respondent3', 'arch_int1_icq', 'arch_int1_paq_respondent1', 'arch_int1_paq_respondent2', 'arch_int1_paq_respondent3', 'arch_int1_pcq', 'arch_int1_psi', 'arch_int1_s_bci', 'arch_int1_s_bfi', 'arch_int1_s_ccare', 'arch_int1_s_feq', 'arch_int1_s_paq', 'arch_int1_s_scq', 'arch_int1_s_ses', 'arch_int1_s_zyg', 'arch_int1_scq', 'arch_int1_tbaq_respondent1', 'arch_int1_tbaq_respondent2', 'arch_interview 1 response tracker', 'arch_interview 3 response tracker', 'arch_interview 4 response tracker', 'arch_zyg', 'arch_zyg_follow up', 'calc_1_tb_99_m', 'calc_4_ad_c', 'calc_4_ad_t', 'data_1_cv_f', 'data_1_cv_m', 'data_1_tb_99_f', 'data_1_tb_99_m', 'data_3_bd_f', 'data_3_bd_m', 'data_3_bl_t', 'data_3_bp_pp_t', 'data_3_bp_sy_t', 'data_3_ch_m', 'data_3_le_m', 'data_3_mp_f', 'data_3_mp_m', 'data_3_pp_t', 'data_3_ps_m', 'data_3_sc_t', 'data_3_sp_m', 'data_3_span_mp_m', 'data_3_tp', 'data_4_ap_t', 'data_4_bb_f', 'data_4_bb_m', 'data_4_bb_t', 'data_4_bl_t', 'data_4_di_t', 'data_4_ei_t', 'data_4_ha_pb_t', 'data_4_ha_sp_c', 'data_4_ha_sp_t', 'data_4_hs_t', 'data_4_hu_t', 'data_4_le_m', 'data_4_mq_f', 'data_4_mq_m', 'data_4_nr_t', 'data_4_pp_t', 'data_4_rs_t', 'data_4_se_t', 'data_4_sp_m', 'data_4_sr_t', 'data_4_st_m', 'data_5_ap_t', 'data_5_bb_t', 'data_5_ha_pb_t', 'data_5_hu_t', 'data_5_rs_t', 'data_c3_ap_t', 'data_c3_bb_t', 'data_c3_ha_pb_t', 'data_c3_ha_sp_c', 'data_c3_ha_sp_t', 'data_c3_hu_t', 'data_c3_rs_t', 'data_mr_ps_f', 'data_mr_ps_m', 'data_rd_ap_t', 'data_rd_bb_t', 'data_rd_ha_pb_t', 'data_rd_ha_sp_c', 'data_rd_ha_sp_t', 'data_rd_hs_t', 'data_rd_hu_t', 'data_rd_rs_t', 'data_rd_se_t', 'data_rd_se_t_test', 'data_sd_mp_m', 'data_sd_sa_td_c', 'gen_staff', 'trash_mkv_geiq_10', 'trash_mkv_kathy6', 'trash_mkv_sb20', 'trash_mkv_sw39', 'user_jj_rdoc_ppt_info']
+updated = [] # type: List[str]
+
+def update_some_tables():
+    db_path = join(db_directory, db_name)
+    cc = get_coordinator(data_souce=DataSource.WTP_DATA)
+    cc.sqlite_filepath = db_path
+    update_the_db_development(cc, updated_tables=updated)
+
+
+def show_tables():
+    cc = get_coordinator(data_souce=DataSource.WTP_DATA)
+    cc.connect()
+    show_changed_table(cc)
 
 if __name__ == "__main__":
     load_path()
     parser = argparse.ArgumentParser(description="Import Data to SQLite")
     parser.add_argument('-a', help="update all db data at once", action='store_true')
     parser.add_argument('-u', help="update data incrementally", action='store_true')
+    parser.add_argument('-t', help="update some tables, tables hard coded right now", action='store_true')
+    parser.add_argument('-changed', help="see the tables that get changed", action='store_true')
     args = parser.parse_args()
 
     logger.info("Program starts")
-    if args.a and args.u:
-        logger.critical("You can't enter '-a' and '-u' as arguments at the same time")
+    if args.a and args.u and args.t:
+        logger.critical("You can't enter '-a' and '-u' and '-t' as arguments at the same time")
 
     elif args.a:
         import_all_of_the_data()
@@ -239,6 +302,12 @@ if __name__ == "__main__":
     elif args.u:
         # it's the incremental update
         increment_update_wtp_collab()
+
+    elif args.t:
+        update_some_tables()
+
+    elif args.changed:
+        show_tables()
 
     # assume that the cc.sqlite_conn here has closed
     logger.info("Program ends")

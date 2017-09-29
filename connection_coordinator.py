@@ -65,7 +65,7 @@ class ConnectionCoordinator:
         self.sqlite_cur = None
 
 
-def get_coordinator(data_souce=DataSource.WTP_COLLAB):
+def get_coordinator(data_souce=DataSource.WTP_DATA):
     global c_cordinater
     if c_cordinater is None:
         c_cordinater = ConnectionCoordinator(data_source=data_souce)
