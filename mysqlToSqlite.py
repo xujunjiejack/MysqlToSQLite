@@ -21,6 +21,10 @@ from typing import *
 
 logger = logging.getLogger("sql2sqlite.main")
 logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler("main.log")
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
+logger.addHandler(file_handler)
 
 # One huge problem for the design of this program is its verbose and hard to remember.
 # Even though I wrote it, I still have to acknowledge that I don't how to find a way to
