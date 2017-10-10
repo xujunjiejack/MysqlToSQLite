@@ -162,7 +162,7 @@ def _create_one_table_in_sqlite_(table_name, cc, exporter,  debug_file = None):
     except Exception as e:
         print("ERROR: %s" % e)
         logger.critical("%s: %s\n stmt: %s" % (table_name, e, use_create_table_sql))
-        import ipdb;ipdb.set_trace()
+       # import ipdb;ipdb.set_trace()
         return False
     print("------------------------------------------")
     return True
