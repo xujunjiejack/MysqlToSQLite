@@ -68,8 +68,8 @@ def build_new_db_from_all_tables(cc : ConnectionCoordinator):
     cc.connect()
 
     s_t, f_t = table_creator.create_new_table(data_source=DataSource.WTP_DATA, exporter=get_db_exporter())
-    #print(s_t)
-    #print(f_t)
+    print(s_t)
+    print(f_t)
 
     cc.connect()
     all_tables = read_table_names_without_quote(cc.sql_cur)

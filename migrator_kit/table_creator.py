@@ -4,6 +4,8 @@ from util.fetch_all_table_name import read_table_names_from_sql_cursor, read_tab
 
 from connection_coordinator import  get_coordinator, DataSource
 from migrator_kit.statement_cleaner import clean_statment
+import pyodbc
+import sqlite3
 
 table_names = ["user_5r_disc_p_120415","user_5r_disc_t_120415"]
 logger = logging.getLogger("sql2sqlite.table_creator")
@@ -81,6 +83,7 @@ def create_new_table(table_names : Optional[Union[str, List[str]]] = None ,
     coordinator = get_coordinator(data_souce=DataSource.WTP_DATA)
     coordinator.connect()
     f = open("create_st.txt", "w")
+
     # get conn and cur for both sqlite and sql
     sqlite_cur = coordinator.sqlite_cur
     sql_cur = coordinator.sql_cur
@@ -93,7 +96,7 @@ def create_new_table(table_names : Optional[Union[str, List[str]]] = None ,
     if table_names is None:
         table_names = read_table_names_from_sql_cursor(sql_cur)
 
-    if type(table_names) is str:
+    elif type(table_names) is str:
         table_names = [table_names]
 
     for table_name in table_names:
@@ -109,6 +112,7 @@ def create_new_table(table_names : Optional[Union[str, List[str]]] = None ,
         print("------------------------------------------")
     coordinator.close_all_connection()
     return success_tables, failure_tables
+
 
 def _get_origin_create_statement_for_a_table_(table_name: str, cc) -> Optional[str]:
     if cc.sqlite_conn is None:
@@ -141,29 +145,47 @@ def _create_one_table_in_sqlite_(table_name, cc, exporter,  debug_file = None):
 
     # get the create statement from the mysql database
     get_create_table_sql = "SHOW CREATE TABLE %s" % table_name
+    use_create_table_sql = ''
+
     try:
         cc.sql_cur.execute(get_create_table_sql)
-    except Exception as e:
+        result = cc.sql_cur.fetchone()
+        use_create_table_sql = clean_statment(result[1])
+
+        # after get the statement,clean the create statement
+        if debug_file is not None:  debug_file.write(use_create_table_sql)
+        print("Creating table for table: %s" % table_name)
+
+    except pyodbc.Error as e:
         print(e)
         logging.critical("%s: %s" % (table_name, e))
         cc.close_all_connection()
         return False
 
-    # after get the statement,clean the create statement
-    result = cc.sql_cur.fetchone()
-    use_create_table_sql = clean_statment(result[1])
-    if debug_file is not None:
-        debug_file.write(use_create_table_sql)
-    print("Creating table for table: %s" % table_name)
 
     # Execute the create statement
     try:
         cc.sqlite_cur.execute(use_create_table_sql)
-    except Exception as e:
+    except sqlite3.OperationalError as e:
         print("ERROR: %s" % e)
         logger.critical("%s: %s\n stmt: %s" % (table_name, e, use_create_table_sql))
-       # import ipdb;ipdb.set_trace()
-        return False
+
+        # if the error message shows that the table is there
+        if "exists" in str(e):
+            try:
+                # try execute drop code. If successful. Then pass, otherwise, return false
+                cc.sqlite_cur.execute("DROP TABLE IF EXISTS '{0}'".format(table_name))
+
+                # If drop successful. Start to redo it.
+                cc.sqlite_cur.execute(use_create_table_sql)
+
+            except pyodbc.Error as e:
+                logger.critical(e)
+                cc.close_all_connection()
+                return False
+        else:
+            cc.close_all_connection()
+            return False
     print("------------------------------------------")
     return True
 

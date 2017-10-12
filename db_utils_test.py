@@ -27,7 +27,6 @@ class MyTestCase(unittest.TestCase):
             # sanitize it
             failed_columns = []  # sanitize returns a list of failed columns or throws an exception
             try:
-
                 failed_columns = db_exporter.sanitize(table, con=self.cc.sqlite_conn)
             except AssertionError as e:  # happens if table could not be dropped some reason
                 print(str(e))
