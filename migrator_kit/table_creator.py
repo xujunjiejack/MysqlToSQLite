@@ -207,12 +207,16 @@ def findTables():
     # list = read_sqlite_tables_from_sqlite_cursor(cur=cc.sqlite_conn.cursor())
     l = read_table_names_from_sql_cursor(cc.sql_cur)  # type: List[TableName]
 
-    tables_with_smallint = []
-    for table_name in l:
-        creating_stmt = _get_origin_create_statement_for_a_table_(table_name, cc)
-        if creating_stmt is not None:
-            if _whether_smallint_in_(creating_stmt.split("\n")):
-                tables_with_smallint.append(table_name)
+    origin_create_stmt_tables = map(lambda table_name: _get_origin_create_statement_for_a_table_(table_name, cc), l)
+    not_none_stmt = filter(lambda x: x is not None, origin_create_stmt_tables)
+    tables_with_smallint = list(filter(lambda creating_stmt: _whether_smallint_in_(creating_stmt.split("\n")), not_none_stmt))
+
+
+    # for table_name in l:
+    #     creating_stmt = _get_origin_create_statement_for_a_table_(table_name, cc)
+    #     if creating_stmt is not None:
+    #         if _whether_smallint_in_(creating_stmt.split("\n")):
+    #             tables_with_smallint.append(table_name)
 
     print(tables_with_smallint)
 

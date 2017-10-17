@@ -1,4 +1,5 @@
 from typing import *
+from toolz.itertoolz import *
 
 creating_stmt = 'CREATE TABLE "data_5_dates" (\n  "familyid" varchar(50) NOT NULL DEFAULT \'\',\n  "inm" varchar(50) DEFAULT NULL,\n  "intw" varchar(50) DEFAULT NULL,\n  "mrisc" varchar(50) DEFAULT NULL,\n  PRIMARY KEY ("familyid"),\n  KEY "familyid" ("familyid")\n)'
 
@@ -77,6 +78,19 @@ def change_smallint_to_int(creating_stmt_lines: List[str]) -> List[str]:
     return creating_stmt_lines
 
 
+def add_primarykeys_to_user_table_tracker(creating_stmt_lines: List[str]) -> List[str]:
+
+    if "user_table_tracker" in first(creating_stmt_lines):
+        length = len(creating_stmt_lines)
+        last_second_line = creating_stmt_lines[length-2]
+        # add a comma at that end
+        creating_stmt_lines[length - 2] = last_second_line + ","
+
+        creating_stmt_lines.insert(length - 1, 'PRIMARY KEY("TableName")')
+
+
+    return creating_stmt_lines
+
 def clean_statment(statement: str):
     """
         sqlite has a little different statement grammer compared with mysql. Thus, it needs to get cleaned
@@ -91,8 +105,9 @@ def clean_statment(statement: str):
     # ipdb.set_trace()
     # The order matter for change_type_of_twin and clean_comma_before_end_parenthesis. This order can ensure that
     # no new possible "comma" will be entered after the last comma gets cleaned up.
-    clean_action = [clean_statements_containing_KEY, clean_unsupported_keyword,
-                    change_type_of_twin, change_smallint_to_int, clean_comma_before_end_parenthesis, change_decimal_to_4,
+    clean_action = [clean_statements_containing_KEY, clean_unsupported_keyword, add_primarykeys_to_user_table_tracker,
+                    change_type_of_twin, change_smallint_to_int, clean_comma_before_end_parenthesis, change_decimal_to_4
+
                     ]  # type: List[StmtCleanFunction]
 
     # get rid of the statment that contains key:
@@ -104,11 +119,11 @@ def clean_statment(statement: str):
     for clean in clean_action:
         lines = clean(lines)
     new_stmt = "\n".join(lines)
-    print(new_stmt)
+    #print(new_stmt)
     return new_stmt
 
 def test():
-    stmt = 'CREATE TABLE "calc_4_pi_m" (  \n \
+    stmt = 'CREATE TABLE "user_table_tracker" (  \n \
           "familyid" varchar(45) NOT NULL DEFAULT \'\', \n \
           "twin" int(10) unsigned NOT NULL DEFAULT \'0\', \n \
           "age" int(10) unsigned NOT NULL DEFAULT \'0\', \n \
@@ -118,11 +133,11 @@ def test():
           "pdsgm" smallint(5) NOT NULL DEFAULT \'0\',\n \
           "apubbm" double NOT NULL DEFAULT \'0\',\n \
           "apubpm" double NOT NULL DEFAULT \'0\',\n \
-          "apubm" double NOT NULL DEFAULT \'0\',\n \
+          "apubm" double NOT NULL DEFAULT \'0\'\n \
            )'
 
     '''PRIMARY KEY ("familyid","twin"),\n \''''
 
     print (clean_statment(stmt))
-
-#test()
+    #print(stmt)
+# test()
