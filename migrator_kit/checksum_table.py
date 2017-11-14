@@ -19,7 +19,7 @@ UpdateTables = List[str]
 
 class ChecksumTable:
 
-    def __init__(self, ignore_tables = [], checksum_file_name = ""):
+    def __init__(self, ignore_tables: List[str] = [], checksum_file_name=""):
         # This file will be a json file
 
         if checksum_file_name == "":

@@ -9,7 +9,7 @@ from datetime import datetime
 from db_exporter_kit.waisman_utils import waisman_errors as we
 from connection_coordinator import get_coordinator
 import sqlite3
-
+from typing import *
 exporter = None
 
 class db_exporter():
@@ -164,19 +164,20 @@ class db_exporter():
                 errors.append('Known_phases not found in settings')
         else:
             for phase in self.settings['known_phases']:
-                if('table' not in self.settings['known_phases'][phase]):
+                if 'table' not in self.settings['known_phases'][phase] :
                     errors.append('table not found in settings[known_phases][%s]'%phase)
-                if('column' not in self.settings['known_phases'][phase]):
+                if 'column' not in self.settings['known_phases'][phase] :
                     errors.append('column not found in settings[known_phases][%s]'%phase)
         
         # check sanitization settings exist
-        if('tables_to_sanitize' not in self.settings):
+        if 'tables_to_sanitize' not in self.settings :
                 errors.append('tables_to_sanitize not found in settings')
         else: # ensure all of them are of the right syntax.
             sanlist = self.settings['tables_to_sanitize']
             for table in sanlist:
                 if sanlist[table] != 'all' and sanlist[table] != 'drop' and type(sanlist[table]) != list:
-                    errors.append('in tables_to_sanitize there is a syntax error in table %s. should be either "all", "drop", or list of column names')%str(table)
+                    errors.append('in tables_to_sanitize there is a syntax error in table %s. should be either "all", '
+                                  '"drop", or list of column names')%str(table)
         ######
         # Done checking for errors.
         if len(errors) is not 0: # did we find any? 
@@ -198,8 +199,10 @@ class db_exporter():
         return True
         ## END want_to_export
 
-    def unwanted_tables(self):
-        return self.settings['tables_we_dont_want_anything_to_do_with']
+    def unwanted_tables(self, tables) -> List[str]:
+
+        # We need to do regular expression
+        return list(filter(self.want_to_export, tables))
 
     # computes which ages to add to a table. then computes them and adds them
     def add_ages_to_table(self, con, origin_table,

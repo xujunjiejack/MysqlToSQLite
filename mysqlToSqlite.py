@@ -106,25 +106,29 @@ def build_new_db_from_all_tables(cc : ConnectionCoordinator):
     # I need a transaction and rollback system
 
 
-def default_checksum_table():
-    not_imported_tables = get_db_exporter().unwanted_tables()
+def default_checksum_table(cc: ConnectionCoordinator):
+    all_tables = read_table_names_without_quote(cc.sql_cur)
+    not_imported_tables = get_db_exporter().unwanted_tables(all_tables)
     return ChecksumTable(ignore_tables=dob_updated_info_tables + not_imported_tables, checksum_file_name=checksum_path)
 
 
 def update_the_db_development_based_on_checksum_table(cc: ConnectionCoordinator):
-    checksum_table = default_checksum_table()
+    checksum_table = default_checksum_table(cc)
     checksum_table.connect_to_db(cc.sql_conn)
     checksum_table.load_in_file()
     new_tables, updated_tables = checksum_table.tables_for_migration(cc)
-    update_the_db_development(cc, new_tables=new_tables, updated_tables=updated_tables, checksum_table = checksum_table)
+    update_the_db_development(cc, new_tables=new_tables, updated_tables=updated_tables, checksum_table=checksum_table)
 
 
 def update_the_db_development(cc: ConnectionCoordinator,
-                              new_tables:Optional[List[str]] = None,
-                              updated_tables:Optional[List[str]] = None,
-                              checksum_table: ChecksumTable = default_checksum_table()):
+                              new_tables: Optional[List[str]] = None,
+                              updated_tables: Optional[List[str]] = None,
+                              checksum_table: Optional[ChecksumTable] = None):
     cc.connect()
     checksum_table.connect_to_db(cc.sql_conn)
+
+    if checksum_table is None:
+        checksum_table = default_checksum_table(cc)
 
     if checksum_table.cur_checksum is None:
         checksum_table.load_in_file()

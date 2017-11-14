@@ -75,6 +75,7 @@
     "tables_we_dont_want_anything_to_do_with": [
         "aaatable*",
         "trash*",
+        "user_jlb*",
         "gen_staff",
         "gen_social_security",
         "gen_secondary_contact",
