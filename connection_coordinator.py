@@ -28,7 +28,7 @@ class ConnectionCoordinator:
         self.sqlite_conn = None
         self.sql_cur = None
         self.sqlite_cur = None
-        self.connection_DSN = {DataSource.WTP_DATA : "wtp_data", DataSource.WTP_COLLAB : "wtp_collab"}
+        self.connection_DSN = {DataSource.WTP_DATA: "wtp_data", DataSource.WTP_COLLAB: "wtp_collab"}
 
     # It can throw both sqlite connection exception and sql connection exception
     def connect(self):

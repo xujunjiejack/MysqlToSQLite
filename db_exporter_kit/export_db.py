@@ -200,9 +200,11 @@ class db_exporter():
         ## END want_to_export
 
     def unwanted_tables(self, tables) -> List[str]:
+        from toolz.functoolz import complement
 
+        not_wanted_to_export = complement(self.want_to_export)
         # We need to do regular expression
-        return list(filter(self.want_to_export, tables))
+        return list(filter(not_wanted_to_export, tables))
 
     # computes which ages to add to a table. then computes them and adds them
     def add_ages_to_table(self, con, origin_table,

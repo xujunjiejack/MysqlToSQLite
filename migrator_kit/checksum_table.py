@@ -147,7 +147,6 @@ class ChecksumTable:
         return new_tables, updated_tables, saved_checksum_dict
 
 
-
 def test():
     checksumTable = ChecksumTable()
     con = pyodbc.connect("DSN=wtp_data")
