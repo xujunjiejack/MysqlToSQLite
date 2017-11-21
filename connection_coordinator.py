@@ -10,6 +10,7 @@ ch.setLevel(logging.DEBUG)
 ch.setFormatter(formatter)
 highest_logger.addHandler(ch)
 
+
 class DataSource(Enum):
     WTP_DATA = 1
     WTP_COLLAB = 2

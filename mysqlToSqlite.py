@@ -193,7 +193,7 @@ def update_the_db_development(cc: ConnectionCoordinator,
     updated_tables_process_queue.process_by_functions_chain_(roadmap)
     new_tables_process_queue.process_by_functions_chain_(roadmap)
 
-    dob_tables_process_queue.process_by_functions_chain_([sanitzer.sanitize_one_table, delete_temp_table_with_origin_temp])
+    #dob_tables_process_queue.process_by_functions_chain_([sanitzer.sanitize_one_table, delete_temp_table_with_origin_temp])
 
     checksum_table.update_the_checksum_of_successful_tables(updated_tables_process_queue.success_tables() +
                                                             new_tables_process_queue.success_tables())
@@ -217,7 +217,7 @@ def update_the_db_development(cc: ConnectionCoordinator,
 def show_changed_table(cc: ConnectionCoordinator) -> None:
     # get the checksum_table
     # call a function to return the table
-    checksum_table = default_checksum_table()
+    checksum_table = default_checksum_table(cc)
     checksum_table.connect_to_db(cc.sql_conn)
     checksum_table.load_in_file()
     new_tables, updated_tables = checksum_table.tables_for_migration(cc)

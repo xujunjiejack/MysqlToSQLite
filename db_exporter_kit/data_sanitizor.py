@@ -67,7 +67,6 @@ class DataSanitizer:
 
     def sanitize_one_table(self, table):
 
-
         self.cc.connect()
         self.con = self.cc.sqlite_conn
         failed_columns = []  # sanitize returns a list of failed columns or throws an exception

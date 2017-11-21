@@ -444,7 +444,7 @@ class db_exporter():
 
     # ensures that this table doesn't have anything that needs to happen to it.
     # if it does contain sensitive data it will remove it.
-    def sanitize(self, table, con, logger=logging):
+    def sanitize(self, table, con, logger=logging) -> List[str]:
         ''' This function is supposed to remove columns from a table so that the table no longer has any 
             sensitive information. however, we need to know what columns contain information that's sensitive.
             We get that from the settings file. there should be a dict called tables_to_sanitize.
@@ -465,16 +465,18 @@ class db_exporter():
                     db.drop_table(con, table)
                 except db.ProgrammingError as e:
                     raise AssertionError('Table %s could not be dropped error-> %s'%(table, str(e)))
-            elif type(sanlist[table]) is list: # sanlist[table] is a list of columns to be dropped
-                cols_failed_to_be_dropped = db.drop_columns(con,table,sanlist[table],logger=logger)
-                return cols_failed_to_be_dropped
-            elif sanlist[table] is 'all':
-                cols_failed_to_be_dropped = db.drop_columns(con,table, db.get_columns(con,table), logger=logger)
-                return cols_failed_to_be_dropped
-            else: 
-                raise TypeError('tables_to_sanitize at table %s is an unrecognized type or keyword.'%table\
-                                     + ' not sure what to do with it. value=%s')%str(sanlist[table])
 
+            elif type(sanlist[table]) is list: # sanlist[table] is a list of columns to be dropped
+                cols_failed_to_be_dropped = db.set_columns_to_null(con, table, columns=sanlist[table], logger=logger)
+                return cols_failed_to_be_dropped
+
+            elif sanlist[table] is 'all':
+                cols_failed_to_be_dropped = db.set_columns_to_null(con, table, columns=db.get_columns(con, table), logger=logger)
+                return cols_failed_to_be_dropped
+
+            else: 
+                raise TypeError('tables_to_sanitize at table %s is an unrecognized type or keyword.'% table\
+                                     + ' not sure what to do with it. value=%s')% str(sanlist[table])
 
         ## END sanitize
 

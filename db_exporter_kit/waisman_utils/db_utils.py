@@ -35,6 +35,8 @@ from datetime import datetime
 from db_exporter_kit.waisman_utils.waisman_general_utils import iterable_is_all_equal, prettify_str
 from db_exporter_kit.waisman_utils.waisman_errors import *
 import sqlite3
+import pyodbc
+from typing import *
 import copy as c
 
 
@@ -88,7 +90,7 @@ def dosql_with_cursor(curs, conn, statement, *params, logger=logging):
         return desc,rows
 
 
-def dosql(conn, statement, *params, logger=logging):
+def dosql(conn, statement, *params, logger=logging) -> (Tuple[Tuple], List[tuple]):
     '''
         Does an sql statement an returns the description (i.e. header)
         and the body of the table. and closes the cursor connection.
@@ -107,6 +109,7 @@ def dosql(conn, statement, *params, logger=logging):
         # logger.error('Error fetching rows returned from statement {%s}.\n desc-> %s\n Error-> %s'%(statement,desc,  e))
         pass  # but don't do anything
 
+    # Why this?
     if isinstance(conn, sqlite3.Connection):
         curs.close()
         return desc, rows
@@ -410,6 +413,39 @@ def drop_table(con,tablename):
         drops a table
     '''
     dosql(con,'drop table '+'"'+'%s"' %tablename)
+
+
+def set_one_column_to_null_sqlite_and_sql(con: sqlite3.Connection, tablename: str, column: str, logger=logging) -> bool:
+    statement = "UPDATE `{tablename}` SET `{column}` = NULL;".format(tablename=tablename,column=column)
+    try:
+        dosql(con, statement)
+        return True
+    except Exception as e:
+        logger.WARN(str(e))
+        return False
+
+
+def set_columns_to_null(con: Union[pyodbc.Connection,sqlite3.Connection],
+                            tablename: str , columns: Union[str, List[str]], logger=logging) -> List[str]:
+
+    if type(columns) is str:
+        # Convert one column to a list
+        columns = [columns]
+
+    if type(columns) is not list:
+        raise ValueError("wrong column type")
+
+    if type(con) is not pyodbc.Connection and type(con) is not sqlite3.Connection:
+        raise ValueError("Wrong connection type")
+
+    # process columns as list.
+    # sqlite and sql use the same syntax for setting column
+
+    failed_to_clean_columns = []
+    for col in columns:
+        if not set_one_column_to_null_sqlite_and_sql(con, tablename, col, logger):
+            failed_to_clean_columns.append(col)
+    return failed_to_clean_columns
 
 def drop_columns(con,tablename, columns, logger=logging):
     '''     Drops a single column or list of columns from a table in db connection

@@ -88,7 +88,6 @@ def add_primarykeys_to_user_table_tracker(creating_stmt_lines: List[str]) -> Lis
 
         creating_stmt_lines.insert(length - 1, 'PRIMARY KEY("TableName")')
 
-
     return creating_stmt_lines
 
 def clean_statment(statement: str):
