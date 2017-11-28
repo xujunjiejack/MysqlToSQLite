@@ -125,13 +125,14 @@ def update_the_db_development(cc: ConnectionCoordinator,
                               updated_tables: Optional[List[str]] = None,
                               checksum_table: Optional[ChecksumTable] = None):
     cc.connect()
-    checksum_table.connect_to_db(cc.sql_conn)
 
     if checksum_table is None:
         checksum_table = default_checksum_table(cc)
 
     if checksum_table.cur_checksum is None:
         checksum_table.load_in_file()
+
+    checksum_table.connect_to_db(cc.sql_conn)
 
     # if the function called with updated_tables,
     if new_tables is None:
@@ -277,7 +278,7 @@ def increment_update_wtp_collab():
     update_the_db_development_based_on_checksum_table(cc)
 
 #updated = ['arch_demographics', 'arch_ibq_respondent1', 'arch_ibq_respondent2', 'arch_ibq_respondent3', 'arch_int1_bci', 'arch_int1_bfi_respondent1', 'arch_int1_bfi_respondent2', 'arch_int1_bfi_respondent3', 'arch_int1_cbq_respondent1', 'arch_int1_cbq_respondent2', 'arch_int1_ccare', 'arch_int1_d_cbq', 'arch_int1_d_icq', 'arch_int1_d_pcq', 'arch_int1_d_tbaq', 'arch_int1_feq_respondent1', 'arch_int1_feq_respondent2', 'arch_int1_feq_respondent3', 'arch_int1_icq', 'arch_int1_paq_respondent1', 'arch_int1_paq_respondent2', 'arch_int1_paq_respondent3', 'arch_int1_pcq', 'arch_int1_psi', 'arch_int1_s_bci', 'arch_int1_s_bfi', 'arch_int1_s_ccare', 'arch_int1_s_feq', 'arch_int1_s_paq', 'arch_int1_s_scq', 'arch_int1_s_ses', 'arch_int1_s_zyg', 'arch_int1_scq', 'arch_int1_tbaq_respondent1', 'arch_int1_tbaq_respondent2', 'arch_interview 1 response tracker', 'arch_interview 3 response tracker', 'arch_interview 4 response tracker', 'arch_zyg', 'arch_zyg_follow up', 'calc_1_tb_99_m', 'calc_4_ad_c', 'calc_4_ad_t', 'data_1_cv_f', 'data_1_cv_m', 'data_1_tb_99_f', 'data_1_tb_99_m', 'data_3_bd_f', 'data_3_bd_m', 'data_3_bl_t', 'data_3_bp_pp_t', 'data_3_bp_sy_t', 'data_3_ch_m', 'data_3_le_m', 'data_3_mp_f', 'data_3_mp_m', 'data_3_pp_t', 'data_3_ps_m', 'data_3_sc_t', 'data_3_sp_m', 'data_3_span_mp_m', 'data_3_tp', 'data_4_ap_t', 'data_4_bb_f', 'data_4_bb_m', 'data_4_bb_t', 'data_4_bl_t', 'data_4_di_t', 'data_4_ei_t', 'data_4_ha_pb_t', 'data_4_ha_sp_c', 'data_4_ha_sp_t', 'data_4_hs_t', 'data_4_hu_t', 'data_4_le_m', 'data_4_mq_f', 'data_4_mq_m', 'data_4_nr_t', 'data_4_pp_t', 'data_4_rs_t', 'data_4_se_t', 'data_4_sp_m', 'data_4_sr_t', 'data_4_st_m', 'data_5_ap_t', 'data_5_bb_t', 'data_5_ha_pb_t', 'data_5_hu_t', 'data_5_rs_t', 'data_c3_ap_t', 'data_c3_bb_t', 'data_c3_ha_pb_t', 'data_c3_ha_sp_c', 'data_c3_ha_sp_t', 'data_c3_hu_t', 'data_c3_rs_t', 'data_mr_ps_f', 'data_mr_ps_m', 'data_rd_ap_t', 'data_rd_bb_t', 'data_rd_ha_pb_t', 'data_rd_ha_sp_c', 'data_rd_ha_sp_t', 'data_rd_hs_t', 'data_rd_hu_t', 'data_rd_rs_t', 'data_rd_se_t', 'data_rd_se_t_test', 'data_sd_mp_m', 'data_sd_sa_td_c', 'gen_staff', 'trash_mkv_geiq_10', 'trash_mkv_kathy6', 'trash_mkv_sb20', 'trash_mkv_sw39', 'user_jj_rdoc_ppt_info']
-updated = [] # type: List[str]
+updated = ["user_4_disc_t_011214"] # type: List[str]
 
 def update_some_tables():
     db_path = join(db_directory, db_name)
