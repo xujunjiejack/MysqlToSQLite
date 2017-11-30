@@ -62,6 +62,8 @@ class DataSanitizer:
                     col_name = col[0]  # it's a tuple the first index is the column name
                     expl = str(col[1])  # the second ndex is the error
                     self.logger.critical('\t%s: %s' % (col_name, expl))
+
+        self.cc.sqlite_conn.commit()
         self.cc.close_all_connection()
         return
 

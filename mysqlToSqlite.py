@@ -193,7 +193,7 @@ def update_the_db_development(cc: ConnectionCoordinator,
     updated_tables_process_queue.process_by_functions_chain_(roadmap)
     new_tables_process_queue.process_by_functions_chain_(roadmap)
 
-    #dob_tables_process_queue.process_by_functions_chain_([sanitzer.sanitize_one_table, delete_temp_table_with_origin_temp])
+    dob_tables_process_queue.process_by_functions_chain_([sanitzer.sanitize_one_table, delete_temp_table_with_origin_temp])
 
     checksum_table.update_the_checksum_of_successful_tables(updated_tables_process_queue.success_tables() +
                                                             new_tables_process_queue.success_tables())
@@ -205,10 +205,12 @@ def update_the_db_development(cc: ConnectionCoordinator,
 
     updated_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)
 
-    logger.critical("Success tables are: {0}, {1}".format(updated_tables_process_queue.success_tables(),
-                                                          new_tables_process_queue.success_tables()))
+    logger.critical("Success tables are: {0}, {1}, {2}".format(dob_tables_process_queue.success_tables(),
+                                                               updated_tables_process_queue.success_tables(),
+                                                               new_tables_process_queue.success_tables()))
 
-    logger.critical("Failure tables are: {0}, {1}".format(updated_tables_process_queue.failure_tables(),
+    logger.critical("Failure tables are: {0}, {1}".format(dob_tables_process_queue.failure_tables(),
+                                                          updated_tables_process_queue.failure_tables(),
                                                           new_tables_process_queue.failure_tables()))
     new_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)
     dob_tables_process_queue.treat_fail_tables_as_error(restore_origin_table_from_temp)

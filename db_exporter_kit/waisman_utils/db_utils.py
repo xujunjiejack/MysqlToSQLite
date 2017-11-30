@@ -106,7 +106,7 @@ def dosql(conn, statement, *params, logger=logging) -> (Tuple[Tuple], List[tuple
         if 'select' in statement.lower():
             rows = curs.fetchall()  # grab all the rows returned. iff there is a select
     except Exception as e:
-        # logger.error('Error fetching rows returned from statement {%s}.\n desc-> %s\n Error-> %s'%(statement,desc,  e))
+        #logger.error('Error fetching rows returned from statement {%s}.\n desc-> %s\n Error-> %s'%(statement,desc,  e))
         pass  # but don't do anything
 
     # Why this?
@@ -445,6 +445,7 @@ def set_columns_to_null(con: Union[pyodbc.Connection,sqlite3.Connection],
     for col in columns:
         if not set_one_column_to_null_sqlite_and_sql(con, tablename, col, logger):
             failed_to_clean_columns.append(col)
+        con.commit()
     return failed_to_clean_columns
 
 def drop_columns(con,tablename, columns, logger=logging):
