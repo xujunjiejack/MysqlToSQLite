@@ -88,7 +88,9 @@
         "gen_staff",
         "gen_jforms_users",
         "gen_no_recruit_sort",
-        "gen_social_security"
+        "gen_social_security",
+        "user_milwaukee_site_list_final",
+        "user_tap 5 percent"
     ],
     "tables_to_sanitize": {
         "gen_family": [
